@@ -1,0 +1,73 @@
+digraph {
+	subgraph cluster3 {
+		gestures [label="gestures
+~
+Deterministic" shape=box]
+		eef_position [label="eef_position
+~
+Deterministic" shape=box]
+		label=3 labeljust=r labelloc=b style=rounded
+	}
+	target_object [label="target_object
+~
+Deterministic" shape=box]
+	test [label="test
+~
+Normal"]
+	target_action [label="target_action
+~
+Deterministic" shape=box]
+	gripper_full [label="gripper_full
+~
+Deterministic" shape=box]
+	subgraph "cluster2 x 3" {
+		object_positions [label="object_positions
+~
+Deterministic" shape=box]
+		label="2 x 3" labeljust=r labelloc=b style=rounded
+	}
+	subgraph cluster4 {
+		actions [label="actions
+~
+Deterministic" shape=box]
+		label=4 labeljust=r labelloc=b style=rounded
+	}
+	subgraph cluster2 {
+		graspable_by_size [label="graspable_by_size
+~
+Deterministic" shape=box]
+		eeff [label="eeff
+~
+Deterministic" shape=box]
+		label=2 labeljust=r labelloc=b style=rounded
+	}
+	subgraph "cluster2 x 4" {
+		actions_1 [label="actions_1
+~
+Deterministic" shape=box]
+		label="2 x 4" labeljust=r labelloc=b style=rounded
+	}
+	subgraph "cluster4 x 2" {
+		actions_2 [label="actions_2
+~
+Deterministic" shape=box]
+		actions_3 [label="actions_3
+~
+Deterministic" shape=box]
+		intent_misc [label="intent_misc
+~
+Deterministic" shape=box]
+		label="4 x 2" labeljust=r labelloc=b style=rounded
+	}
+	gestures -> actions
+	object_positions -> eeff
+	eef_position -> eeff
+	actions -> actions_1
+	eeff -> actions_2
+	actions_1 -> actions_2
+	graspable_by_size -> intent_misc
+	actions_2 -> actions_3
+	intent_misc -> actions_3
+	actions_3 -> target_action
+	actions_3 -> target_object
+}

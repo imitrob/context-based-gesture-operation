@@ -1,0 +1,30 @@
+digraph {
+	misc_features [label="misc_features
+~
+Categorical"]
+	gesture_object_focus [label="gesture_object_focus
+~
+Categorical"]
+	object_intent [label="object_intent
+~
+Categorical"]
+	intent [label="intent
+~
+Categorical"]
+	eeff [label="eeff
+~
+Categorical"]
+	parameter_distance [label="parameter_distance
+~
+Categorical"]
+	gesture_id_intent [label="gesture_id_intent
+~
+Categorical"]
+	intent -> gesture_id_intent
+	object_intent -> misc_features
+	intent -> misc_features
+	intent -> parameter_distance
+	object_intent -> gesture_object_focus
+	intent -> gesture_object_focus
+	object_intent -> eeff
+}
