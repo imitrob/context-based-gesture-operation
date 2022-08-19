@@ -8,6 +8,7 @@ import pandas
 from pymc3_lib import *
 
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 class MappingBayesNet():
     ''' vK
@@ -106,7 +107,8 @@ class MappingBayesNet():
     def init_policy_simple(self):#does not take into account influence of user or object
         self.policy = {}
         self.policy['CM_est'] = np.diag(np.full(6,1))
-        self.policy_history.append(self.policy)
+        self.policy['i'] = 'init'
+        self.policy_history.append(deepcopy(self.policy))
         return self.policy
 
     def select_action(self):
@@ -133,27 +135,14 @@ class MappingBayesNet():
             reward_dif = 0.00000001
 
         if reward_dif >= 0:
-            if out: print("Picking new random")
-            if out: print(" ======\n", self.policy)
-            if type == 'random':
-                r1,r2 = np.random.choice(len(self.A), 2, replace=False)
-                self.policy['CM_est'][[r1,r2]] = self.policy['CM_est'][[r2,r1]]
-            elif type == 'q-learning':
-                raise exception("TODO")
-                old_value = q_table[state, action]
-                next_max = np.max(q_table[next_state])
-
-                new_value = (1 - alpha) * old_value + alpha * (reward + gamma * next_max)
-                q_table[state, action] = new_value
-
-            if out: print(" to \n", self.policy, "\n ======\n")
+            r1,r2 = np.random.choice(len(self.A), 2, replace=False)
+            self.policy['CM_est'][[r1,r2]] = self.policy['CM_est'][[r2,r1]]
+            self.policy['i'] = 'forward'
         else:
-            if out: print("Reverting")
-            if out: print(" ======\n", self.policy)
-            self.policy = self.policy_history[-2]
-            if out: print(" to \n", self.policy, "\n ======\n")
+            self.policy = deepcopy(self.policy_history[-2])
+            self.policy['i'] = 'revert'
 
-        self.policy_history.append(self.policy.copy())
+        self.policy_history.append(deepcopy(self.policy))
 
     # def model(self):
     #     with pm.Model() as self.m:
@@ -188,7 +177,7 @@ class MappingBayesNet_Testing():
             'obj_types':['cup','drawer'],
             'User':['Jan','Mara'],
             'User_C':0,
-            'TA':2,
+            'TA': 'move up',
             'TO':'cup2',
             'objects': {
                 'cup1': { 'position': [0,1,0.],
@@ -222,12 +211,21 @@ class MappingBayesNet_Testing():
 
     @staticmethod
     def test__K():
-        print("Test 1: generate observations")
         scene_state = MappingBayesNet_Testing.load__default()
+
         bn = MappingBayesNet(scene_state)
         print(bn.create_observation())
-        bn.init_policy_simple()
+
         print(bn.select_action())
+
+        bn.policy_history
+        bn.policy_update(reward=1)
+        bn.policy_history
+        bn.policy_update(reward=-1)
+        bn.policy_history
+
+
+
         return bn
 
 
