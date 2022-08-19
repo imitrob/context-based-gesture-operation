@@ -7,9 +7,9 @@ class Actions():
     A = ['move_up', 'open', 'put', 'pour', 'close', 'pick_up']
 
     @staticmethod
-    def step(s, s2, action, ignore_location=True):
+    def step(s, s2, action, ignore_location=True, out=False):
         next_state = s.copy()
-        Actions.do(next_state, action, ignore_location=ignore_location, out=True)
+        Actions.do(next_state, action, ignore_location=ignore_location, out=out)
 
         reward = next_state == s2
         done = False
@@ -53,7 +53,7 @@ class Actions():
         if not getattr(Actions, action[0])(s, o, ignore_location=ignore_location):
             if out: print("Action cannot be performed!")
             return False
-        print(f'{action} done!')
+        if out: print(f'{action} done!')
         return True
 
     @staticmethod

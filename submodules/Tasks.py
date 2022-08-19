@@ -1,97 +1,48 @@
-''' Conditioned by o1, o2, measure
-'''
-import numpy as np
-from submodules import Scenes, Objects, Robots
 
-class Task():
+from submodules.Scenes import Scene
+from submodules.Actions import Actions
+
+class CupToDrawer():
+    ''' Static '''
+    action_sequence = [
+        ['open', 'drawer'], # open drawer
+        ['pick_up', 'cup1'],   # pick up cup1
+        ['put', 'drawer']  # put to drawer
+    ]
     def __init__(self):
         pass
+    def decide(self, s):
+        if s.cup in s.drawer.contains:
+            return True
+        if s.r.attached and s.cup == s.r.attached:
+            return ('put', 'drawer')
+        if s.drawer.opened:
+            return ('pick_up', 'cup')
+        return ('open', 'drawer')
 
-class Put(Task):
-    def do(self, s, o1=None,o2=None,measure=None):
-        common_sense_proba = 1.
-        if o1.type == 'drawer':
-            return False
-        if o2.type == 'drawer': # put o1 into drawer o2
-            if not o2.open(): return False
-            if not o1.gripper_move(o2.position): return False
-            if not o2.put_in(o1): return False
-            if not o2.close(): return False
-        else: # stack o1 on top of o2
-            if not o1.on_top:
-                if not o1.unstack(): return False
-            if not o1.gripper_move(o2.position): return False
-            if not o2.stack(o1): return False
-        return common_sense_proba
-
-class Pour(Task):
-    def do(self, s, o1=None,o2=None,measure=None):
-        common_sense_proba = 1.
-        if o1.type != 'cup':
-            return False
-        common_sense_proba *= o2.pourable
-        if not o1.full: common_sense_proba *= 0.2
-        if o2.full: common_sense_proba *= 0.2
-
-        if not o1.empty(): return False
-        if not o2.fill(): return False
-
-        return common_sense_proba
-
-class Push(Task):
-    def do(self, s, o1=None,o2=None,measure=None):
-        common_sense_proba = 1.
-        direction = np.array([-1,0,0])
-        if not o1.pushable:
-            return False
-
-        new_position = np.int64(o1.position + direction * measure)
-
-        if not s.collision_free_position(new_position): common_sense_proba *= 0.8
-        if not s.in_scene(new_position): common_sense_proba *= 0.8
-
-        if not o1.push_move(new_position): return False
-
-        return common_sense_proba
-
+    def get_start_target_scenes(self):
+        s = Scene(init='cup,drawer',random=False)
+        s2 = s.copy()
+        Actions.do(s2, ('open', 'drawer'), ignore_location=True, out=False)
+        Actions.do(s2, ('pick_up', 'cup'), ignore_location=True, out=False)
+        Actions.do(s2, ('put', 'drawer'), ignore_location=True, out=False)
+        return s, s2
 
 
 if __name__ == '__main__':
-    # Put cup into drawer
-    s = Scenes.Scene(init='drawer_and_cup')
-    print(s.drawer)
-    Put().do(s, o1=s.cup,o2=s.drawer)
-    print(s.drawer)
+    t = CupToDrawer()
+    import sys; sys.path.append("..")
+    from Scenes import Scene
+    from Actions import Actions
+    s = Scene(init='drawer,cup', random=False)
 
-    # Pour cup one into cup two
-    s = Scenes.Scene(init='drawer_and_cups')
-    s.cup1.fill()
-    print(s.cup1)
-    print(s.cup2)
-    Pour().do(s, o1=s.cup1,o2=s.cup2)
-    print(s.cup1)
-    print(s.cup2)
+    while True:
+        action = t.decide(s)
+        if action is True: break
+        Actions.do(s, action, ignore_location=True)
+    print("Task done!")
 
-    # Pour cup one into drawer
-    s = Scenes.Scene(init='drawer_and_cups')
-    s.cup1.fill()
-    print(s.cup1)
-    Pour().do(s, o1=s.cup1,o2=s.drawer)
-    print(s.cup1)
-    print(s.drawer)
-
-    # Spill the cup
-    s.cup2.rotate([1,0,0])
-    print(s.cup2)
-
-
-    s = Scenes.Scene(init='drawer_and_cups')
-    print(s)
-    s.cup1.position
-    Push().do(s, o1=s.cup1, measure=1)
-    s.cup1.position
-
-
-
-
-#
+    s,s2 = CupToDrawer().get_start_target_scenes()
+    s.info
+    s2.info
+    s == s2

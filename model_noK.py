@@ -13,7 +13,7 @@ class MappingBayesNet():
     ''' vK
     >>> MappingBayesNet(objects)
     '''
-    def __init__(self, scene_state):
+    def __init__(self, scene_state, policy=None):
         '''
         >>> self = bn
         '''
@@ -67,10 +67,17 @@ class MappingBayesNet():
         '''
         self.policy_history = []
         self.reward_history = []
+        self.action_history = []
 
-        self.init_policy_simple()
+        if policy is not None:
+            self.policy = policy
+        else:
+            self.init_policy_simple()
 
-    def create_observation(self):
+    def create_observation(self, action=None):
+        if action is not None:
+            self.TA = self.A.index(action[0])
+            self.TO = action[1]
         self.observation = {}
         self.observation['focus_point'] = np.zeros(3)
         self.observation['gesture_vec'] = np.zeros(6)
@@ -114,6 +121,7 @@ class MappingBayesNet():
         self.action['target_object'] = self.O[idx]
         self.action['target_action'] = self.A[np.argmax(np.matmul(self.policy['CM_est'],self.observation['gesture_vec']))]
 
+        self.action_history.append(self.action)
         return self.action
 
     def policy_update(self, reward, type='random', out=False):
