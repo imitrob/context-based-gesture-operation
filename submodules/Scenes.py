@@ -229,7 +229,7 @@ class Scene():
         self.r.attached = None
         if robot['attached'] is not None:
             for o in self.objects:
-                if o.name == robot['attached']:
+                if o.name == robot['attached'].name:
                     self.r.attached = o
                     break
 
@@ -254,8 +254,8 @@ class Scene():
                 reward += 1
             if o1.type == 'drawer':
                 if o2.type != 'drawer': raise Exception("scenes havent got same objects")
-                reward += len(list(set(o1.contains_list).intersection(o2.contains_list)))
-                max_reward += len(o1.contains_list)
+                reward += len(list(set(o2.contains_list).intersection(o1.contains_list)))
+                max_reward += len(o2.contains_list)
                 max_reward += 1
                 if o1.opened == o2.opened:
                     reward += 1
