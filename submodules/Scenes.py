@@ -4,6 +4,7 @@
 import numpy as np
 import submodules.Objects as Objects
 import submodules.Robots as Robots
+from copy import deepcopy
 
 class Scene():
 
@@ -44,13 +45,20 @@ class Scene():
             self.r.gripper_opened = bool(np.random.randint(2))
             self.r.eef_rotation = np.random.randint(2)
 
-    def to_state(self):
-        np.zeros([4,4,4,2,2])
-        np.zeros([*self.grid_lens, len(self.O), len(self.O) + 1])
-
-        self.r.eef_position
-
-        return
+    def scene_encode_to_state(self, TaTo=None):
+        # State is one integer number trying to encode the whole scene state
+        dims = [*self.grid_lens, len(self.O)+1, len(self.O)]
+        n_states = np.prod(np.array(dims))
+        #                  eef_position   x gripper obj                 x target obj
+        state_values = [*self.r.eef_position, self.get_gripper_object_id()]
+        dims.reverse()
+        state_values.reverse()
+        state = 0
+        cumulative = 1
+        for d,s in zip(dims,state_values):
+            state += cumulative * s
+            cumulative *= d
+        return state
 
     @property
     def info(self):
@@ -63,6 +71,14 @@ class Scene():
             s += '\n'
         s += str(self.r)
         return s
+
+    def get_gripper_object_id(self):
+        if self.r.attached is None:
+            return len(self.O)
+        return self.O.index(self.r.attached.name)
+
+    def get_object_id(self, name):
+        return self.O.index(name)
 
     def get_object(self, id):
         return self.O[id]
@@ -141,15 +157,13 @@ class Scene():
     def __getattr__(self, attr):
         return self.objects[self.O.index(attr)]
 
-    def generate_scene_state(self, A, G, U, selected_id, TaTo):
+    def generate_scene_state(self, A, G, U, selected_id):
         scene_state = self.to_dict()
         scene_state['A'] = A
         scene_state['G'] = G
         scene_state['obj_types'] = Objects.Object.all_types
         scene_state['User'] = U
         scene_state['User_C'] = selected_id
-        scene_state['TA'] = TaTo[0]
-        scene_state['TO'] = TaTo[1]
         return scene_state
 
     def to_dict(self):
@@ -263,6 +277,36 @@ class Scene():
         if reward == max_reward: return True
         return reward
 
+    def plan_path_to_position(self, position, Actions):
+        start = deepcopy(self.r.eef_position)
+        goal = position
+
+        n=0
+        move_sequence = []
+        while sum(start-goal)>0 and n<20:
+            dir = goal - start
+
+            # The set of moves might be conditioned by positions
+            s2 = self.copy()
+            s2.r.eef_position = start
+            possible_actions = Actions.get_possible_move_actions(s2)
+            possible_moves = []
+            for possible_action in possible_actions:
+                possible_moves.append(Actions.A_move_directions[Actions.A_move.index(possible_action)])
+
+            dir = dir/np.linalg.norm(dir)
+
+            # heuristics
+            best_possible_move_id = np.argmin([np.linalg.norm(move - dir) for move in possible_moves])
+            best_move_id = Actions.A_move_directions.index(possible_moves[best_possible_move_id])
+
+            move_sequence.append(best_move_id)
+            # apply move
+            start += Actions.A_move_directions[best_move_id]
+            n+=1
+        if n >=20: raise Exception("Path couldn't be found!")
+
+        return [Actions.A_move[i] for i in move_sequence]
 
 if __name__ == '__main__':
     drawer1 = Objects.Drawer(name='drawer1', position=[0,0,0])

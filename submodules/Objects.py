@@ -173,6 +173,9 @@ class Drawer(Object):
         self.graspable = False
         self.pushable = False
         self.pourable = 0.2
+        ## experimental
+        self.open_close_count = 0
+
 
     def stack(self, object_under=None):
         return False # drawer cannot be stacked
@@ -189,6 +192,7 @@ class Drawer(Object):
         return 'opened' if self.opened else 'closed'
 
     def open(self):
+        self.open_close_count += 1
         opened_before = self.opened
         self.opened = True
         if not opened_before:
@@ -197,6 +201,7 @@ class Drawer(Object):
             return False
 
     def close(self):
+        self.open_close_count += 1
         opened_before = self.opened
         self.opened = False
         if opened_before:

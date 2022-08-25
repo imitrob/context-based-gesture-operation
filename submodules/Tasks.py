@@ -6,7 +6,7 @@ class CupToDrawer():
     ''' Static '''
     action_sequence = [
         ['open', 'drawer'], # open drawer
-        ['pick_up', 'cup1'],   # pick up cup1
+        ['pick_up', 'cup'],   # pick up cup1
         ['put', 'drawer']  # put to drawer
     ]
     def __init__(self):

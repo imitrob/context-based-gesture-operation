@@ -9,12 +9,13 @@ from pymc3_lib import *
 
 import matplotlib.pyplot as plt
 from copy import deepcopy
+from submodules.PolicyUpdate import *
 
 class MappingBayesNet():
     ''' vK
     >>> MappingBayesNet(objects)
     '''
-    def __init__(self, scene_state, policy=None):
+    def __init__(self, scene_state, policy_history=None):
         '''
         >>> self = bn
         '''
@@ -23,12 +24,12 @@ class MappingBayesNet():
         self.A = scene_state['A'] # Action names
         self.G = scene_state['G'] # Possible gestures
         self.U = scene_state['User']  # User names
-        self.TA = self.A.index(scene_state['TA']) #target action
-        self.TO = scene_state ['TO'] #target object
         self.CU = scene_state['User_C'] #current user
+        self.TA = None
+        self.TO = None
+        self.obj_idx = None
 
         self.O = list(self.objects.keys()) # Object names
-        self.obj_idx = self.obj_types.index(self.objects[self.TO]['type'])
 
 
         # Conditional prob tables (mapping actions to gestures for individual users and objects)
@@ -67,18 +68,20 @@ class MappingBayesNet():
         [0.7, 0.0, 0.0, 0.3, 0.0, 0.0]]
         '''
         self.policy_history = []
-        self.reward_history = []
-        self.action_history = []
+        if policy_history is not None:
+            self.policy_history = policy_history
 
-        if policy is not None:
-            self.policy = policy
-        else:
-            self.init_policy_simple()
+    @property
+    def policy(self):
+        return self.policy_history[-1]
 
     def create_observation(self, action=None):
-        if action is not None:
-            self.TA = self.A.index(action[0])
-            self.TO = action[1]
+        if action is None: raise Exception("action not provided")
+
+        self.TA = self.A.index(action[0])
+        self.TO = action[1]
+        self.obj_idx = self.obj_types.index(self.objects[self.TO]['type'])
+
         self.observation = {}
         self.observation['focus_point'] = np.zeros(3)
         self.observation['gesture_vec'] = np.zeros(6)
@@ -104,45 +107,53 @@ class MappingBayesNet():
         self.policy['CM_est'][1, 1, :, :] = np.diag(np.ones([6]))
         return self.policy
 
-    def init_policy_simple(self):#does not take into account influence of user or object
-        self.policy = {}
-        self.policy['CM_est'] = np.diag(np.full(6,1))
-        self.policy['i'] = 'init'
-        self.policy_history.append(deepcopy(self.policy))
-        return self.policy
+    def init_policy_simple(self, policy=None):#does not take into account influence of user or object
+        if policy is not None:
+            self.policy_history.append(policy)
+        else:
+            policy = {}
+            policy['CM_est'] = np.diag(np.full(6,1))
+            policy['i'] = 'init'
+            policy['r'] = False
+            policy['permutation'] = 0
+
+            self.policy_history.append(deepcopy(policy))
+        return policy
 
     def select_action(self):
-        self.action = {}
-        self.action['target_object'] = 0
-        self.action['target_action'] = 0
+        action = {}
+        action['target_object'] = 0
+        action['target_action'] = 0
 
         dist_vec = []
         for obj_name in self.O:
             dist_vec.append( np.linalg.norm(self.objects[obj_name]['position'] - self.observation['focus_point']) )
         idx = np.argmin(dist_vec)
-        self.action['target_object'] = self.O[idx]
-        self.action['target_action'] = self.A[np.argmax(np.matmul(self.policy['CM_est'],self.observation['gesture_vec']))]
+        action['target_object'] = self.O[idx]
+        action['target_action'] = self.A[np.argmax(np.matmul(self.policy['CM_est'],self.observation['gesture_vec']))]
 
-        self.action_history.append(self.action)
-        return self.action
+        self.policy_history[-1]['action'] = action
+        return action
 
-    def policy_update(self, reward, type='random', out=False):
-        self.reward_history.append(reward)
+    def policy_step(self, reward=0., type='random', out=False):
+        if out: print(f"r: {reward}")
+        policy = deepcopy(self.policy_history[-1]) # new policy
+        policy['r'] = reward
+        self.policy_history.append(deepcopy(policy))
+        return policy
 
-        if len(self.reward_history) > 1:
-            reward_dif = self.reward_history[-1] - self.reward_history[-2]
-        else:
-            reward_dif = 0.00000001
 
-        if reward_dif >= 0:
-            r1,r2 = np.random.choice(len(self.A), 2, replace=False)
-            self.policy['CM_est'][[r1,r2]] = self.policy['CM_est'][[r2,r1]]
-            self.policy['i'] = 'forward'
-        else:
-            self.policy = deepcopy(self.policy_history[-2])
-            self.policy['i'] = 'revert'
+    def policy_update(self, reward=0., out=False, mode='compare_last_reward__no_memory__random'):
+        policy = PolicyUpdateByMutation.do(self.policy_history, reward, out=out, mode=mode)
+        self.policy_history.append(deepcopy(policy))
+        return policy
 
-        self.policy_history.append(deepcopy(self.policy))
+    def print_policy(self):
+        print(f"total: {len(self.policy_history)}")
+        for i in range(len(self.policy_history)):
+            print(f"{i}, r: {self.policy_history[i]['r']} \t-> {self.policy_history[i]['i']}, ({self.policy_history[i]['action']['target_action']}, {self.policy_history[i]['action']['target_object']})")
+        print(f"d: done")
+
 
     # def model(self):
     #     with pm.Model() as self.m:
