@@ -2,12 +2,18 @@
 class Users():
     ''' static attributes '''
     U = ['Jan', 'Mara']
-    selected_id = 0
 
-    def __init__(self):
+    def __init__(self, u=0):
         # preferable model
         #self.preference = ['pour', 'red']
-        pass
+        if isinstance(u, int):
+            self.selected_id = u
+        else: # u is string
+            self.selected_id = Users.U.index(u)
+
+    @property
+    def name(self):
+        return Users.U[self.selected_id]
 
     @property
     def selected(self):
@@ -22,4 +28,5 @@ class Users():
 
 
 if __name__ == '__main__':
-    pass
+    u = Users()
+    u.name

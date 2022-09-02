@@ -1,3 +1,4 @@
+
 ''' Helper functions Bayes nets
 '''
 import pymc3 as pm
@@ -142,11 +143,65 @@ class CPTMapping:
         return self.cpt[index]
 
 class CPTCat:
-    def __init__(self, cpt_dict):
+    def __init__(self, cpt_dict, vars=None, n_vars=None, out_n_vars=None):
+        '''
+        Parameters:
+            cpt_dict (dict): Input always as: {'var1=0': {'var2=0': v1, 'var2=1': v2}, 'var2=1': {'var2=0': v3, 'var2=1': v4}}
+            vars (Str []): Variable names, Only if incomplete cpt_dict
+            n_vars (Int []): Variable categorical sizes, Only if incomplete cpt_dict
+            out_n_vars (Int): Number of output variables C()=2, Only if incomplete cpt_dict
+        '''
         self.cpt_dict = cpt_dict
-        self.vars = self.get_vars_from_dict()
-        self.n_vars, self.out_n_vars = self.get_n_vars_from_dict()
+        self.vars = vars
+        if vars is None: self.vars = self.get_vars_from_dict()
+        self.n_vars, self.out_n_vars = n_vars, out_n_vars
+        if not self.n_vars or not self.out_n_vars: self.n_vars, self.out_n_vars = self.get_n_vars_from_dict()
+        self.init()
+
+    def __call__(self):
+        ''' Plots CPT Table '''
+        rows = np.prod(self.n_vars)
+
+        if self.out_n_vars == 2:
+            columns = len(self.n_vars) + self.out_n_vars - 1
+            t = np.zeros([rows, columns])
+            for row in range(rows):
+                decoded = decode(row,dims=self.n_vars)
+                t[row,-1] = self.cpt_eval.item(tuple([*decoded, 1]))
+                t[row,:-1] = np.array(decoded, dtype=int)
+            return pandas.DataFrame(t, columns=[*self.vars, 'p'])
+        else:
+            columns = len(self.n_vars) + self.out_n_vars
+            t = np.zeros([rows, columns])
+            for row in range(rows):
+                decoded = decode(row,dims=self.n_vars)
+                t[row,-self.out_n_vars:] = self.cpt_eval[(tuple([*decoded]))]
+                t[row,:-self.out_n_vars] = np.array(decoded, dtype=int)
+
+            p_out = list(range(self.out_n_vars))
+            p_out = ['p_out='+str(p) for p in p_out]
+            return pandas.DataFrame(t, columns=[*self.vars, *p_out])
+
+    def info(self):
+        print(self.__call__())
+
+    def set(self,index,value):
+        if isinstance(value, (int, float)):
+            value = C(value)
+
+        if isinstance(index, int):
+            self.cpt_dict[index] = value
+        elif len(index) == 1:
+            self.cpt_dict[index[0]] = value
+        elif len(index) == 2:
+            self.cpt_dict[index[0]][index[1]] = value
+        elif len(index) == 3:
+            self.cpt_dict[index[0]][index[1]][index[2]] = value
+        self.init()
+
+    def init(self):
         self.cpt = self.CPT_to_theanoarray(self.cpt_dict)
+        self.cpt_eval = self.cpt.eval()
 
     def get_vars_from_dict(self):
         vars = []
@@ -167,18 +222,26 @@ class CPTCat:
 
     def CPT_to_theanoarray(self, CPT):
         a = np.zeros([*self.n_vars, self.out_n_vars])
-
-        for n,key in enumerate(CPT):
-            for m,key2 in enumerate(CPT[key]):
-                a[n,m] = np.array(CPT[key][key2])
+        if len(self.n_vars) == 1:
+            for n,key in enumerate(CPT):
+                a[n] = np.array(CPT[key])
+        elif len(self.n_vars) == 2:
+            for n,key in enumerate(CPT):
+                for m,key2 in enumerate(CPT[key]):
+                    a[n,m] = np.array(CPT[key][key2])
+        else: raise Exception("CPT not dim=2 or dim=1")
 
         return theano.shared(np.asarray(a))
 
-    def pymc_model_fn(self, v1, v2):
-        return self.cpt[v1][v2]
+    def pymc_model_fn(self, v1, v2=None):
+        if len(self.n_vars) == 1:
+            return self.cpt[v1]
+        elif len(self.n_vars) == 2:
+            return self.cpt[v1][v2]
+        else: raise Exceptions("TODO")
 
-    def fn(self, v1, v2):
-        return self.cpt[v1][v2]
+    def fn(self, v1, v2=None):
+        return self.pymc_model_fn(v1=v1, v2=v2)
 
 
 
@@ -188,3 +251,33 @@ def graph_replace_text(graphvizfig, varname, text):
             graphvizfig.body[n] = part.replace('Categorical', text)
             return graphvizfig
     raise Exception("var not found!")
+
+
+def encode(state_values=[1,1,2], dims=[2,2,3]):
+    n_states = np.prod(np.array(dims))
+    dims.reverse()
+    state_values.reverse()
+    state = 0
+    cumulative = 1
+    for d,s in zip(dims,state_values):
+        state += cumulative * s
+        cumulative *= d
+    return state
+
+def decode(state=11, dims=[2,2,3]):
+    n_states = np.prod(np.array(dims))
+    states = []
+    for d in dims:
+        s = state % d
+        states.append(s)
+        state = state//d
+    return states
+
+if __name__ == '__main__':
+    state = encode([1,1,2])
+    state
+    decode(state)
+
+    state = encode([9,9,9], dims=[10,10,10])
+    state
+    decode(state, dims=[10,10,10])

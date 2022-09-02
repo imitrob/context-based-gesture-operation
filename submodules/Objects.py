@@ -6,7 +6,7 @@ from numpy import array as a
 
 class Object():
     ''' static attributes '''
-    all_types = ['cup', 'drawer']
+    all_types = ['cup', 'drawer', 'object']
 
     def __init__(self, name, # String
                        position, # Point
@@ -21,10 +21,14 @@ class Object():
         self.above = None # object
         self.size = 0.05
         self.max_allowed_size = 0.0
+        self.stackable = True
         self.graspable = True
         self.pushable = True
         self.pourable = 0.1
         self.full = False
+
+    def random_capacity(self):
+        return np.random.choice(['', 'stacked'])
 
     def gripper_rotate(self, direction):
         if not self.graspable: return False
@@ -46,7 +50,7 @@ class Object():
 
     @property
     def on_top(self):
-        if not self.under: return True
+        if (not self.above and not self.inside_drawer): return True
         return False
 
     @property
@@ -58,7 +62,7 @@ class Object():
         print(self.__str__())
 
     def __str__(self):
-        return f'{self.name}, {self.type}, {self.position}'
+        return f'{self.name},\t{self.type},\t{self.position},\t{self.print_structure(out_oneline_str=True)}'
 
     def __eq__(self, obj2):
         ''' Returns True if collision
@@ -80,7 +84,7 @@ class Object():
                         return True
 
         return False
-
+    '''
     def stack(self, object_under=None):
         if object_under:
             if object_under.above is not None:
@@ -92,6 +96,22 @@ class Object():
         # current object name of object under
         self.under = object_under
         if object_under: object_under.above = self
+        return True
+    '''
+    def stack(self, object_attached=None):
+        if object_attached is None:
+            return False
+        if object_attached.above is not None:
+            return False
+        if not self.free:
+            return False
+        if not self.stackable:
+            return False
+        if self.inside_drawer:
+            return False
+        # current object name of object under
+        self.above = object_attached
+        if object_attached: object_attached.under = self
         return True
 
     def unstack(self):
@@ -131,7 +151,7 @@ class Object():
             obj = obj.under
         return under_list
 
-    def print_structure(self):
+    def print_structure(self, out_oneline_str=False):
         obj = self
         above_list = []
         while obj.above:
@@ -143,13 +163,27 @@ class Object():
             under_list.append(obj.under.name)
             obj = obj.under
 
-        print("Structure:")
-        above_list.reverse()
-        for item in above_list:
-            print(item)
-        print(f"[{self.name}]")
-        for item in under_list:
-            print(item)
+        if out_oneline_str: # return in one line string, don't print anything
+            strg = "|| "
+            under_list.reverse()
+            for item in under_list:
+                strg += item
+                strg += ' '
+            strg += f"[{self.name}]"
+            strg += ' '
+            for item in above_list:
+                strg += item
+                strg += ' '
+            strg += ">>"
+            return strg
+        else:
+            print("Structure:")
+            above_list.reverse()
+            for item in above_list:
+                print(item)
+            print(f"[{self.name}]")
+            for item in under_list:
+                print(item)
 
     def is_obj_inside_drawer(self, object2):
         object1 = self
@@ -170,18 +204,21 @@ class Drawer(Object):
         self.type = 'drawer'
         self.max_allowed_size = 0.15
         self.size = 0.2
+        self.stackable = False
         self.graspable = False
         self.pushable = False
         self.pourable = 0.2
         ## experimental
         self.open_close_count = 0
 
+    def random_capacity(self):
+        return np.random.choice(['', 'contains'])
 
     def stack(self, object_under=None):
         return False # drawer cannot be stacked
 
     def __str__(self):
-        return f'{self.name}, {self.type}, {self.position}, {self.opened_str}, {[c.name for c in self.contains]}'
+        return f'{self.name},\t{self.type},\t{self.position}, {self.opened_str}, cont: {[c.name for c in self.contains]},\t{self.print_structure(out_oneline_str=True)}'
 
     @property
     def contains_list(self):
@@ -248,9 +285,13 @@ class Cup(Object):
         self.size = 0.01 # [m] height
         if random: self.size = np.random.randint(1,10)/100
         self.inside_drawer = False
+        self.stackable = False
         self.graspable = True
         self.pushable = True
         self.pourable = 0.99
+
+    def random_capacity(self):
+        return np.random.choice(['', 'stacked'])
 
     def rotate(self, direction):
         self.direction = np.array(direction)
@@ -259,7 +300,7 @@ class Cup(Object):
         return
 
     def __str__(self):
-        return f'{self.name}, {self.type}, {self.position}, {self.full_str}'
+        return f'{self.name},\t{self.type},\t{self.position}, {self.full_str},\t{self.print_structure(out_oneline_str=True)}'
 
     @property
     def full_str(self):
@@ -321,7 +362,9 @@ if __name__ == '__main__':
     o_2 = Object('o_2', [0,0,0])
     o_3 = Object('o_3', [0,0,0])
     o_4 = Object('o_4', [0,0,0])
+    o_2.print_structure()
     o_2.stack(o_1)
+    o_2.info
     o_3.stack(o_2)
     o_4.stack(o_3)
     o_1.print_structure()

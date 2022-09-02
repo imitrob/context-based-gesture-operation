@@ -251,5 +251,3 @@ if __name__ == '__main__':
     pl = pm.traceplot(bn.prior_trace)
     pl.render("sad")
     pm.plot_forest(bn.prior_trace)
-
-#

@@ -98,7 +98,7 @@ class Actions():
         if not Actions.is_action_from_move_category(action[0]) and handle_location:
             move_action_seq = s.plan_path_to_position(o.position, Actions)
             Actions.execute_path_to_position(s, move_action_seq)
-            print(f"Executed move actions: {move_action_seq}")
+            #print(f"Executed move actions: {move_action_seq}")
 
         ret = getattr(Actions, action[0])(s, o, p, ignore_location=ignore_location)
         if not ret:
@@ -123,12 +123,15 @@ class Actions():
         if not s.r.attached: return False
         i = 0
         while True:
-            new_position = np.int64(o.position + np.hstack([np.random.choice(3, 2) - 1, 0]))
+            new_position = np.int64(np.hstack([np.random.choice(4, 2), 0]))
             if s.collision_free_position(new_position):
                 if s.in_scene(new_position):
                     break
             i += 1
-            if i > 10000: raise Exception("Couldn't found new place where to push!")
+            if i > 10000:
+                print(f"The object {o}")
+                s.info
+                raise Exception("Couldn't found new place where to push!")
 
         if common_sense_proba < p: return False
         s.r.attached.position = new_position
@@ -186,6 +189,7 @@ class Actions():
         else:
             s.r.eef_direction = 1
 
+        o.unstack()
         s.r.attached = o
         return True
 

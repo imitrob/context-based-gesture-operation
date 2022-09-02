@@ -7,13 +7,11 @@ import pandas
 
 from pymc3_lib import *
 
-import matplotlib.pyplot as plt
-
 class MappingBayesNet():
-    ''' v2
+    ''' v2.1
     >>> MappingBayesNet(objects)
     '''
-    def __init__(self, scene_observation):
+    def __init__(self, scene_observation, probabilities=[]):
         self.objects = scene_observation['objects'] # Object data
         self.G = scene_observation['G'] # Gesture names
         self.A = scene_observation['A'] # Action names
@@ -26,25 +24,25 @@ class MappingBayesNet():
 
         # Observations
         self.gestures__in = theano.shared(np.asarray(scene_observation['gestures']))
-        self.gripper_full__in = theano.shared(np.asarray(int(scene_observation['gripper']['full'])))
-        self.eef_position__in = theano.shared(np.asarray(scene_observation['eef_position']))
+        gripper_full = 1 if scene_observation['robot']['attached'] is not None else 0
+        self.gripper_full__in = theano.shared(np.asarray(gripper_full))
+        self.eef_position__in = theano.shared(np.asarray(scene_observation['robot']['eef_position']))
         # Scene & robot parameters
-        self.gripper_range = theano.shared(np.asarray(scene_observation['gripper']['range']))
+        self.gripper_range = theano.shared(np.asarray(scene_observation['robot']['gripper_range']))
         object_sizes_ = []
         for n,objk in enumerate(list(self.objects.keys())):
             object_sizes_.append(self.objects[objk]['size'])
         self.object_sizes = theano.shared(np.asarray(object_sizes_))
 
-        self.cpt_gesture_object_focus = CPTCat({
-        'intent=0': {'object_intent=0': C(0.25), 'object_intent=1': C(0.25)},
-        'intent=1': {'object_intent=0': C(0.25), 'object_intent=1': C(0.25)},
-        })
         self.mt_gestures = theano.shared(np.diag(scene_observation['gestures']))
-        self.mt_parameter_distance = theano.shared(np.diag([1/3]*3))
+        self.mt_parameter_distance = probabilities['mt_parameter_distance']
 
         self.intent_p = [1/self.n_actions]*self.n_actions
         self.object_intent_p = [1/self.n_objects]*self.n_objects
+        self.cpt_gesture_object_focus = probabilities['cpt_gesture_object_focus']
 
+        self.cpt_eeff_feature = self.eeff__feature_cpt()
+        self.cpt_feaf_feature = self.feaf__feature_cpt()
 
     def model(self):
         with pm.Model() as self.m:
@@ -53,13 +51,18 @@ class MappingBayesNet():
 
             # can be observed
             gesture_id_intent = pm.Categorical('gesture_id_intent', switchn(intent, self.mt_gestures))
-            parameter_distance = pm.Categorical('parameter_distance', switchn(intent, self.mt_parameter_distance)) # 5, 10, 20
+            parameter_distance = pm.Categorical('parameter_distance', self.mt_parameter_distance.fn(intent)) # 5, 10, 20
             gesture_object_focus = pm.Categorical('gesture_object_focus', self.cpt_gesture_object_focus.fn(intent, object_intent))
 
-            eeff_feature = self.eeff__feature()
-            eeff = pm.Categorical('eeff', pm.math.switch(object_intent, C(eeff_feature[0]), C(eeff_feature[1])))
+            eeff = pm.Categorical('eeff', self.cpt_eeff_feature.fn(intent, object_intent))
+            feaf = pm.Categorical('feaf', self.cpt_feaf_feature.fn(intent, object_intent))
 
             self.prior_trace = pm.sample_prior_predictive(10000)
+
+    def sample(self, n=100):
+        with self.m:
+            prior_trace = pm.sample_prior_predictive(n)
+        return prior_trace
 
     def eeff__feature(self):
         ''' Deterministically compute eef field based on observation
@@ -76,6 +79,21 @@ class MappingBayesNet():
         '''
         feaf = self.sigmoid(self.object_sizes, center=self.gripper_range)
         return feaf
+
+    ''' Conversions to CPT '''
+    def eeff__feature_cpt(self):
+        eeff = self.eeff__feature()
+        cpt_dict = {}
+        for n,eeff_ in enumerate(eeff.eval()):
+            cpt_dict['object='+str(n)] = C(eeff_)
+        return CPTCat(cpt_dict)
+
+    def feaf__feature_cpt(self):
+        feaf = self.feaf__feature()
+        cpt_dict = {}
+        for n,feaf_ in enumerate(feaf.eval()):
+            cpt_dict['object='+str(n)] = C(feaf_)
+        return CPTCat(cpt_dict)
 
     def predict(self, out=''):
         ''' Returns action intent and object intent
@@ -142,13 +160,13 @@ class MappingBayesNet():
         self.eeff
 
 
+if __name__ == '__main__':
 
+    a = probabilities['cpt_gesture_object_focus']
 
+    # %% codecell
 
-
-
-
-
-
-
-#
+    cpt = CPTCat({
+    'intent=0': {'object_intent=1': C(0.25)},
+    'intent=1': {'object_intent=0': C(0.25), 'object_intent=1': C(0.25)},
+    }, vars=['intent','object_intent'], n_vars=[2,2], out_n_vars=2)

@@ -4,12 +4,15 @@
 import numpy as np
 import submodules.Objects as Objects
 import submodules.Robots as Robots
+from submodules.Users import Users
+from submodules.Actions import Actions
 from copy import deepcopy
 
 class Scene():
 
-    def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', random=True, import_data=None):
+    def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=0, random=True, import_data=None):
         self.r = Robots.Robot()
+        self.u = Users(user)
         self.objects = objects
         self.grid_lens = grid_lens
         if init in ['no_task', '']:
@@ -44,6 +47,39 @@ class Scene():
             self.r.eef_position = self.get_random_position_in_scene('z=3')
             self.r.gripper_opened = bool(np.random.randint(2))
             self.r.eef_rotation = np.random.randint(2)
+
+            object_names = self.O
+            np.random.shuffle(object_names)
+            for o in object_names:
+                oobj = getattr(self, o)
+                conf = oobj.random_capacity()
+                if conf == '':
+                    continue
+                elif conf == 'contains':
+                    o2 = self.get_random_object(constrains=['free','graspable'], exclude=[o])
+                    if o2 is None: continue
+
+                    if not Actions.do(self, ('pick_up', o2), ignore_location=True): print(f"Error! put_to_drawer: pick_up {o2}")
+                    if not getattr(self,o).opened:
+                        if not Actions.do(self, ('open', o), ignore_location=True): print(f"Error! put_to_drawer: open {o}")
+                    if not Actions.do(self, ('put', o), ignore_location=True): print(f"Error! put_to_drawer {o2}: put {o}")
+                    #print(f"DONE put to drawer {o2} to {o}")
+                elif conf == 'stacked':
+                    if not oobj.free: continue
+                    o2 = self.get_random_object(constrains=['free','graspable','stackable'], exclude=[o])
+                    if o2 is None: continue
+
+                    if not Actions.do(self, ('pick_up', o), ignore_location=True): print(f"Error! stack: pick_up {o}")
+                    if not Actions.do(self, ('put', o2), ignore_location=True): print(f"Error! stack {o}: put {o2}")
+                    #print(f"DONE stacked {o} to {o2}")
+            attached = np.random.randint(2)
+            if attached:
+                o = self.get_random_object(constrains=['free','graspable'])
+                if o is not None:
+                    if not Actions.do(self, ('pick_up', o), ignore_location=True): print(f"Error! attached {o}")
+
+    def scene_to_observation(self):
+        return [*self.r.eef_position, self.get_gripper_object_id()]
 
     def scene_encode_to_state(self, TaTo=None):
         # State is one integer number trying to encode the whole scene state
@@ -86,8 +122,51 @@ class Scene():
     def get_object(self, id):
         return self.O[id]
 
-    def get_random_object(self):
-        return np.random.choice(self.O)
+    def get_random_object(self, constrains=[], exclude=[]):
+        objects = []
+        for o in self.O:
+            oobj = getattr(self, o)
+            if o in exclude: continue
+            valid = True
+            for constraint in constrains:
+                if not getattr(oobj, constraint):
+                    valid = False
+            if valid: objects.append(o)
+        if objects == []: return None
+        return np.random.choice(objects)
+
+    def get_random_stackable_object(self, free_condition=True):
+        stackable_objects = []
+        for o in self.O:
+            oobj = getattr(self, o)
+            if oobj.type != 'drawer' and oobj.type != 'cup':
+                if free_condition:
+                    if oobj.free:
+                        stackable_objects.append(o)
+                    else:
+                        continue
+                else:
+                    stackable_objects.append(o)
+        if stackable_objects == []:
+            return None
+        else:
+            return np.random.choice(stackable_objects)
+
+    def get_random_drawer(self, free_condition=False):
+        drawers = []
+        for o in self.O:
+            if getattr(self, o).type == 'drawer':
+                if free_condition: # check condition if drawer is free
+                    if getattr(self, o).contains == []:
+                        drawers.append(o)
+                    else:
+                        continue
+                else: # do NOT check condition if drawer is free
+                    drawers.append(o)
+        if drawers == []:
+            return None
+        else:
+            return np.random.choice(drawers)
 
     def get_unique_object_name(self, unique_name, name_list=None):
         '''
@@ -194,8 +273,10 @@ class Scene():
         'eef_position': self.r.eef_position,
         'gripper_opened': self.r.gripper_opened,
         'eef_rotation': self.r.eef_rotation,
-        'attached': self.r.attached
+        'attached': self.r.attached_str,
+        'gripper_range': self.r.gripper_range,
             }
+        scene_state['user'] = self.u.name
         return scene_state
 
     def copy(self):
@@ -244,11 +325,12 @@ class Scene():
         self.r.gripper_opened = robot['gripper_opened']
         self.r.eef_rotation = robot['eef_rotation']
         self.r.attached = None
-        if robot['attached'] is not None:
+        if robot['attached'] != '':
             for o in self.objects:
-                if o.name == robot['attached'].name:
+                if o.name == robot['attached']:
                     self.r.attached = o
                     break
+        self.u = Users(scene_state['user'])
 
     def __eq__(self, obj2):
         ''' Reward function

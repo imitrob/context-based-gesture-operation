@@ -8,6 +8,8 @@ class Robot():
         self.eef_rotation = eef_rotation
         self.attached = None
 
+        self.gripper_range = 0.14 # For Panda
+
     @property
     def gripper_opened_str(self):
         return 'opened' if self.gripper_opened else 'closed'
