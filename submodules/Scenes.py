@@ -6,6 +6,7 @@ import submodules.Objects as Objects
 import submodules.Robots as Robots
 from submodules.Users import Users
 from submodules.Actions import Actions
+from submodules.features import Features
 from copy import deepcopy
 
 class Scene():
@@ -22,21 +23,6 @@ class Scene():
         elif init == 'from_dict':
             random = False
             self.from_dict(import_data)
-
-        elif init == 'drawer_and_cup':
-            drawer = Objects.Drawer(name='drawer', position=[2,0,0], random=random)
-            cup = Objects.Cup(name='cup', position=[2,1,0], random=random)
-            self.objects = [drawer, cup]
-        elif init == 'drawer_and_cups':
-            drawer = Objects.Drawer(name='drawer', position=[2,0,0], random=random)
-            cup1 = Objects.Cup(name='cup1', position=[2,1,0], random=random)
-            cup2 = Objects.Cup(name='cup2', position=[2,2,0], random=random)
-            self.objects = [drawer, cup1, cup2]
-        elif init == 'objects':
-            object1 = Objects.Object(name='object1', position=[2,0,0], random=random)
-            object2 = Objects.Object(name='object2', position=[2,1,0], random=random)
-            object3 = Objects.Object(name='object3', position=[2,2,0], random=random)
-            self.objects = [object1, object2, object3]
         else:
             self.objects = []
             obj_list = init.split(',')
@@ -78,8 +64,16 @@ class Scene():
                 if o is not None:
                     if not Actions.do(self, ('pick_up', o), ignore_location=True): print(f"Error! attached {o}")
 
-    def scene_to_observation(self):
-        return [*self.r.eef_position, self.get_gripper_object_id()]
+    def scene_to_observation(self, type=1):
+        if type == 0: # first trial
+            return [*self.r.eef_position, self.get_gripper_object_id()]
+        elif type == 1: # all info - just to try it out
+            return self.experimental__get_obs()
+        elif type == 2:
+            return [*self.r.eef_position, self.get_gripper_object_id()]
+        elif type == 3:
+            return [*self.r.eef_position, self.get_gripper_object_id()]
+        else: raise Exception("Scene to observation - not the right type!")
 
     def scene_encode_to_state(self, TaTo=None):
         # State is one integer number trying to encode the whole scene state
@@ -110,6 +104,21 @@ class Scene():
             s += '\n'
         s += str(self.r)
         return s
+
+    def experimental__get_obs(self):
+        o = []
+        o.extend(list(self.r.eef_position))
+        o.append(self.r.eef_rotation)
+        o.append(self.get_gripper_object_id())
+        for obj in self.objects:
+            o.extend(list(obj.experimental__get_obs()))
+        return np.array(o).flatten()
+
+    def experimental__get_obs2(self):
+        o = []
+        Features.eeff__feature(self.object_positions, self.r.eef_position)
+        Features.feaf__feature(object_sizes, gripper_range)
+        return np.array(o).flatten()
 
     def get_gripper_object_id(self):
         if self.r.attached is None:
@@ -393,6 +402,69 @@ class Scene():
 
         return [Actions.A_move[i] for i in move_sequence]
 
+    def position_real(self, position, scene_lens, max_scene_len=0.8):
+        ''' Duplicite function in object.py
+        '''
+        scene_lens = np.array(scene_lens)
+
+        one_tile_lens = max_scene_len/scene_lens
+        y_translation = (scene_lens[1]-1)*one_tile_lens[1]/2
+
+        position_scaled = position * one_tile_lens
+        position_translated = position_scaled - [0.2, y_translation, 0.]
+
+        return position_translated
+
+class SceneCoppeliaInterface():
+    def __init__(self, interface_handle=None, print_info=False):
+        '''
+        Parameters:
+            interface_handle (object): Control simulator or real robot
+        '''
+        if interface_handle is None: raise Exception("No interface_handle!")
+        self.interface_handle = interface_handle
+        self.s = None
+
+        self.print_info = print_info
+
+    def new_scene(self, s):
+        '''
+        Parameters:
+            s (Scene): Scene instance
+        '''
+        if self.s is not None:
+            self.remove_objects_from_scene()
+        self.s = s
+
+
+        for o in s.objects:
+            ''' simplified object creaton '''
+            if o.type == 'object':
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), shape="cube")
+            elif o.type == 'cup':
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), shape="cylinder")
+            elif o.type == 'drawer':
+                if o.name == 'drawer2': raise Exception("TODO")
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real())
+            else: raise Exception(f"Object type {o.type} not in the list!")
+
+            #interface_handle.add_or_edit_object(file=f"{settings.paths.home}/{settings.paths.ws_folder}/src/mirracle_gestures/include/models/{file}", size=size, color=color, mass=mass, friction=friction, inertia=inertia, inertiaTransformation=inertiaTransformation, dynamic=dynamic, pub_info=pub_info, texture_file=texture_file, name=obj_name, pose=self.scenes[id].object_poses[i], frame_id=settings.base_link)
+            #interface_handle.add_or_edit_object(name=obj_name, frame_id=settings.base_link, size=size, color=color, pose=self.scenes[id].object_poses[i], shape='cube', mass=mass, friction=friction, inertia=inertia, inertiaTransformation=inertiaTransformation, dynamic=dynamic, pub_info=pub_info, texture_file=texture_file)
+        if self.print_info: print("Scene initialization done!")
+
+    def remove_objects_from_scene(self):
+        if self.s is None: return False
+        for o in self.s.objects:
+            if o.type == 'drawer' and o.name == 'drawer':
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[3.0,1.0,0.15])
+            elif o.type == 'drawer' and o.name == 'drawer1':
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[3.0,0.0,0.15])
+            else:
+                self.interface_handle.remove_object(name=o.name)
+
+
+
+
 if __name__ == '__main__':
     drawer1 = Objects.Drawer(name='drawer1', position=[0,0,0])
     drawer2 = Objects.Drawer(name='drawer2', position=[2,0,0])
@@ -476,29 +548,6 @@ if __name__ == '__main__':
     scene.drawer.contains
     scene.collision_free()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#
+    1
+    import numpy as np
+    np.histogram(np.array(np.round(np.random.normal(3.5, 1, 50)), dtype=int))

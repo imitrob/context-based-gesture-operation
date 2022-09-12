@@ -10,7 +10,7 @@ class Object():
 
     def __init__(self, name, # String
                        position, # Point
-                       random = True # don't have effect on this object
+                       random = True
                        ):
         self.name = name
         self.position = np.array(position)
@@ -26,6 +26,21 @@ class Object():
         self.pushable = True
         self.pourable = 0.1
         self.full = False
+        self.color = 'b'
+        if random: self.color = np.random.choice(['r','g','b'])
+
+    def experimental__get_obs(self):
+        o = []
+        o.append(1 if self.under is not None else 0)
+        o.append(1 if self.above is not None else 0)
+        o.append(int(self.inside_drawer))
+        o.extend(list(self.position))
+        if self.type == 'drawer':
+            o.append(len(self.contains))
+        if self.type == 'cup':
+            o.append(int(self.full))
+
+        return np.array(o).flatten()
 
     def random_capacity(self):
         return np.random.choice(['', 'stacked'])
@@ -193,6 +208,16 @@ class Object():
             return True
         return False
 
+    def position_real(self, scene_lens=[4,4,4], max_scene_len=0.8):
+        scene_lens = np.array(scene_lens)
+
+        one_tile_lens = max_scene_len/scene_lens
+        y_translation = (scene_lens[1]-1)*one_tile_lens[1]/2
+
+        position_scaled = self.position * one_tile_lens
+        position_translated = position_scaled + [0.2, -y_translation, self.size]
+
+        return position_translated
 
 class Drawer(Object):
     def __init__(self, name="?", position=[0,0,0], opened=False, random=True):
@@ -203,7 +228,7 @@ class Drawer(Object):
         self.contains = []
         self.type = 'drawer'
         self.max_allowed_size = 0.15
-        self.size = 0.2
+        self.size = 0.15
         self.stackable = False
         self.graspable = False
         self.pushable = False
@@ -283,7 +308,7 @@ class Cup(Object):
         self.type = 'cup'
         self.direction = np.array([0, 0, 1]) # default
         self.size = 0.01 # [m] height
-        if random: self.size = np.random.randint(1,10)/100
+        if random: self.size = np.random.randint(4,11)/100
         self.inside_drawer = False
         self.stackable = False
         self.graspable = True

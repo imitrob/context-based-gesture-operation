@@ -118,7 +118,7 @@ class Actions():
     ''' Action definitions
     '''
     @staticmethod
-    def put_on_target(s, o=None, p=None, ignore_location=False):
+    def place(s, o=None, p=None, ignore_location=False):
         common_sense_proba = 1.
         if not s.r.attached: return False
         i = 0
@@ -154,6 +154,21 @@ class Actions():
             #if not s.r.attached.gripper_move(o.position): return False
             if common_sense_proba < p: return False
             if not o.stack(s.r.attached): return False
+        s.r.attached = None
+
+        return True
+
+    @staticmethod
+    def put_on(s, o, p, ignore_location=False):
+        common_sense_proba = 1.
+
+        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not s.r.attached: return False
+        if o.type == 'cup':
+            return False # cup is unstackable
+        #if not s.r.attached.gripper_move(o.position): return False
+        if common_sense_proba < p: return False
+        if not o.stack(s.r.attached): return False
         s.r.attached = None
 
         return True
