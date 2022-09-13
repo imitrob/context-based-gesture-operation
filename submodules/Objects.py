@@ -29,6 +29,8 @@ class Object():
         self.color = 'b'
         if random: self.color = np.random.choice(['r','g','b'])
 
+
+
     def experimental__get_obs(self):
         o = []
         o.append(1 if self.under is not None else 0)
@@ -41,6 +43,18 @@ class Object():
             o.append(int(self.full))
 
         return np.array(o).flatten()
+
+    def experimental__get_obs2(self):
+        o = np.zeros([4])
+        o[0] = (1 if self.under is not None else 0)
+        o[1] = (1 if self.above is not None else 0)
+        o[2] = (int(self.inside_drawer))
+        if self.type == 'drawer':
+            o[3] = (len(self.contains))
+        if self.type == 'cup':
+            o[3] = (int(self.full))
+
+        return o
 
     def random_capacity(self):
         return np.random.choice(['', 'stacked'])

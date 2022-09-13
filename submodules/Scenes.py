@@ -64,15 +64,53 @@ class Scene():
                 if o is not None:
                     if not Actions.do(self, ('pick_up', o), ignore_location=True): print(f"Error! attached {o}")
 
-    def scene_to_observation(self, type=1):
+    def scene_to_observation(self, type=1, focus_point=None, max_n_objects=7):
+        v1 = np.zeros([max_n_objects+1])
+        v1[self.get_gripper_object_id()] = 1
+
+        v2 = np.zeros([max_n_objects])
+        focf = Features.eeff__feature(self.object_positions, focus_point)
+        v2[:len(focf)] = focf
+
+        v3 = np.zeros([max_n_objects])
+        eeff = Features.eeff__feature(self.object_positions, self.r.eef_position)
+        v3[:len(eeff)] = eeff
+
+        v2_diff = np.zeros([max_n_objects])
+        tmp_ = self.object_positions - focus_point
+        tmp__ = np.sum(np.power(tmp_,2), axis=1)
+        v2_diff[:len(tmp__)] = tmp__
+
+        v3_diff = np.zeros([max_n_objects])
+        tmp_ = self.object_positions - self.r.eef_position
+        tmp__ = np.sum(np.power(tmp_,2), axis=1)
+        v3_diff[:len(tmp__)] = tmp__
+
+        vo = np.zeros([4*max_n_objects])
+        for n,obj in enumerate(self.objects):
+            vo[n*4:n*4+4] = (list(obj.experimental__get_obs2()))
+
+        v4 = np.zeros([len(Objects.Object.all_types)])
+        if self.r.attached is not None:
+            v4[Objects.Object.all_types.index(self.r.attached.type)] = 1
+
         if type == 0: # first trial
-            return [*self.r.eef_position, self.get_gripper_object_id()]
+            return []
         elif type == 1: # all info - just to try it out
             return self.experimental__get_obs()
         elif type == 2:
-            return [*self.r.eef_position, self.get_gripper_object_id()]
+            return Features.eeff__feature(self.object_positions, focus_point)
         elif type == 3:
-            return [*self.r.eef_position, self.get_gripper_object_id()]
+            return [*v1, *v2]
+        elif type == 4:
+            return [*v1, *v2, *vo]
+        elif type == 5:
+            return [*v1, *v2, *v3, *vo]
+        elif type == 6:
+            return [*v1, *v2_diff, *v3_diff, *vo]
+        elif type == 7:
+            return [*v4]
+
         else: raise Exception("Scene to observation - not the right type!")
 
     def scene_encode_to_state(self, TaTo=None):
