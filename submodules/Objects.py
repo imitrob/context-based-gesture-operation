@@ -29,7 +29,9 @@ class Object():
         self.color = 'b'
         if random: self.color = np.random.choice(['r','g','b'])
 
-
+    def get_unique_state(self):
+        ''' Unique state of the box is if it is on top '''
+        return int(self.on_top)
 
     def experimental__get_obs(self):
         o = []
@@ -45,15 +47,16 @@ class Object():
         return np.array(o).flatten()
 
     def experimental__get_obs2(self):
-        o = np.zeros([4])
-        o[0] = (1 if self.under is not None else 0)
-        o[1] = (1 if self.above is not None else 0)
-        o[2] = (int(self.inside_drawer))
+        o = np.zeros([1])
+        #o[0] = (1 if self.under is not None else 0)
+        #o[1] = (1 if self.above is not None else 0)
+        #o[2] = (int(self.inside_drawer))
         if self.type == 'drawer':
-            o[3] = (len(self.contains))
+            o[0] = (len(self.contains))
         if self.type == 'cup':
-            o[3] = (int(self.full))
-
+            o[0] = (int(self.full))
+        if self.type == 'object':
+            o[0] = (int(self.on_top))
         return o
 
     def random_capacity(self):
@@ -231,6 +234,13 @@ class Object():
         position_scaled = self.position * one_tile_lens
         position_translated = position_scaled + [0.2, -y_translation, self.size]
 
+        z_add = 0
+        slf = self
+        for _ in range(len(self.under_list)):
+            slf = self.under
+            z_add += slf.size
+        position_translated[2] += z_add
+
         return position_translated
 
 class Drawer(Object):
@@ -243,12 +253,16 @@ class Drawer(Object):
         self.type = 'drawer'
         self.max_allowed_size = 0.15
         self.size = 0.15
-        self.stackable = False
+        self.stackable = True
         self.graspable = False
         self.pushable = False
         self.pourable = 0.2
         ## experimental
         self.open_close_count = 0
+
+    def get_unique_state(self):
+        ''' Unique state of the drawer is if it opened or closed '''
+        return int(self.opened)
 
     def random_capacity(self):
         return np.random.choice(['', 'contains'])
@@ -328,6 +342,10 @@ class Cup(Object):
         self.graspable = True
         self.pushable = True
         self.pourable = 0.99
+
+    def get_unique_state(self):
+        ''' Unique state of the cup is if it full or empty '''
+        return int(self.full)
 
     def random_capacity(self):
         return np.random.choice(['', 'stacked'])

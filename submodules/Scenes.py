@@ -11,8 +11,10 @@ from copy import deepcopy
 
 class Scene():
 
-    def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=0, random=True, import_data=None):
+    def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=None, random=True, import_data=None):
         self.r = Robots.Robot()
+        if user is None:
+            user = np.random.randint(2)
         self.u = Users(user)
         self.objects = objects
         self.grid_lens = grid_lens
@@ -45,24 +47,26 @@ class Scene():
                     o2 = self.get_random_object(constrains=['free','graspable'], exclude=[o])
                     if o2 is None: continue
 
-                    if not Actions.do(self, ('pick_up', o2), ignore_location=True): print(f"Error! put_to_drawer: pick_up {o2}")
+                    if not Actions.do(self, ('pick_up', o2), fake_handle_location=True): print(f"Error! put_to_drawer: pick_up {o2}")
                     if not getattr(self,o).opened:
-                        if not Actions.do(self, ('open', o), ignore_location=True): print(f"Error! put_to_drawer: open {o}")
-                    if not Actions.do(self, ('put', o), ignore_location=True): print(f"Error! put_to_drawer {o2}: put {o}")
+                        if not Actions.do(self, ('open', o), fake_handle_location=True): print(f"Error! put_to_drawer: open {o}")
+                    if not Actions.do(self, ('put', o), fake_handle_location=True): print(f"Error! put_to_drawer {o2}: put {o}")
                     #print(f"DONE put to drawer {o2} to {o}")
                 elif conf == 'stacked':
                     if not oobj.free: continue
                     o2 = self.get_random_object(constrains=['free','graspable','stackable'], exclude=[o])
                     if o2 is None: continue
 
-                    if not Actions.do(self, ('pick_up', o), ignore_location=True): print(f"Error! stack: pick_up {o}")
-                    if not Actions.do(self, ('put', o2), ignore_location=True): print(f"Error! stack {o}: put {o2}")
+                    if not Actions.do(self, ('pick_up', o), fake_handle_location=True): print(f"Error! stack: pick_up {o}\n{self.info}\n")
+                    if not Actions.do(self, ('put', o2), fake_handle_location=True): print(f"Error! stack {o}: put {o2}")
                     #print(f"DONE stacked {o} to {o2}")
             attached = np.random.randint(2)
             if attached:
                 o = self.get_random_object(constrains=['free','graspable'])
                 if o is not None:
-                    if not Actions.do(self, ('pick_up', o), ignore_location=True): print(f"Error! attached {o}")
+                    if not Actions.do(self, ('pick_up', o), fake_handle_location=True): print(f"Error! attached {o}")
+                    if not Actions.do(self, ('move_up', o), fake_handle_location=True): print(f"Error! attached {o}")
+
 
     def scene_to_observation(self, type=1, focus_point=None, max_n_objects=7):
         v1 = np.zeros([max_n_objects+1])
@@ -86,9 +90,9 @@ class Scene():
         tmp__ = np.sum(np.power(tmp_,2), axis=1)
         v3_diff[:len(tmp__)] = tmp__
 
-        vo = np.zeros([4*max_n_objects])
+        vo = np.zeros([1*max_n_objects])
         for n,obj in enumerate(self.objects):
-            vo[n*4:n*4+4] = (list(obj.experimental__get_obs2()))
+            vo[n*1:n*1+1] = (list(obj.experimental__get_obs2()))
 
         v4 = np.zeros([len(Objects.Object.all_types)])
         if self.r.attached is not None:
@@ -110,6 +114,8 @@ class Scene():
             return [*v1, *v2_diff, *v3_diff, *vo]
         elif type == 7:
             return [*v4]
+        elif type == 8:
+            return [*v2, *vo]
 
         else: raise Exception("Scene to observation - not the right type!")
 
@@ -440,7 +446,7 @@ class Scene():
 
         return [Actions.A_move[i] for i in move_sequence]
 
-    def position_real(self, position, scene_lens, max_scene_len=0.8):
+    def position_real(self, position, scene_lens=[4,4,4], max_scene_len=0.8):
         ''' Duplicite function in object.py
         '''
         scene_lens = np.array(scene_lens)
@@ -449,7 +455,7 @@ class Scene():
         y_translation = (scene_lens[1]-1)*one_tile_lens[1]/2
 
         position_scaled = position * one_tile_lens
-        position_translated = position_scaled - [0.2, y_translation, 0.]
+        position_translated = position_scaled - [-0.2, y_translation, 0.]
 
         return position_translated
 
@@ -476,7 +482,7 @@ class SceneCoppeliaInterface():
 
 
         for o in s.objects:
-            ''' simplified object creaton '''
+            ''' simplified object creation '''
             if o.type == 'object':
                 self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), shape="cube")
             elif o.type == 'cup':
@@ -488,18 +494,24 @@ class SceneCoppeliaInterface():
 
             #interface_handle.add_or_edit_object(file=f"{settings.paths.home}/{settings.paths.ws_folder}/src/mirracle_gestures/include/models/{file}", size=size, color=color, mass=mass, friction=friction, inertia=inertia, inertiaTransformation=inertiaTransformation, dynamic=dynamic, pub_info=pub_info, texture_file=texture_file, name=obj_name, pose=self.scenes[id].object_poses[i], frame_id=settings.base_link)
             #interface_handle.add_or_edit_object(name=obj_name, frame_id=settings.base_link, size=size, color=color, pose=self.scenes[id].object_poses[i], shape='cube', mass=mass, friction=friction, inertia=inertia, inertiaTransformation=inertiaTransformation, dynamic=dynamic, pub_info=pub_info, texture_file=texture_file)
+
+        position_real = self.s.position_real(position=self.s.r.eef_position)
+        self.interface_handle.go_to_pose(position_real)
+
         if self.print_info: print("Scene initialization done!")
 
     def remove_objects_from_scene(self):
         if self.s is None: return False
         for o in self.s.objects:
             if o.type == 'drawer' and o.name == 'drawer':
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[3.0,1.0,0.15])
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[1.0,1.0,-0.5], object_state=o.opened_str)
             elif o.type == 'drawer' and o.name == 'drawer1':
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[3.0,0.0,0.15])
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[1.0,-0.0,0.5])
             else:
                 self.interface_handle.remove_object(name=o.name)
 
+        position_real = self.s.position_real(position=[2,0,3])
+        self.interface_handle.go_to_pose(position_real)
 
 
 

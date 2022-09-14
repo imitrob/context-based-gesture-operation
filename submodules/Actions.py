@@ -81,7 +81,7 @@ class Actions():
                     valid_actions.append((action,object))
 
     @staticmethod
-    def do(s, action, ignore_location=False, out=False, p=0.9, handle_location=False):
+    def do(s, action, ignore_location=False, out=False, p=0.9, handle_location=False, fake_handle_location=False):
         '''
         Parameters:
             s (Scene): Scene
@@ -95,6 +95,8 @@ class Actions():
             action = (action['target_action'], action['target_object'])
 
         o = getattr(s, action[1]) if action[1] else ""
+        if not Actions.is_action_from_move_category(action[0]) and fake_handle_location:
+            Actions.fake_move(s, o.position)
         if not Actions.is_action_from_move_category(action[0]) and handle_location:
             move_action_seq = s.plan_path_to_position(o.position, Actions)
             Actions.execute_path_to_position(s, move_action_seq)
@@ -320,3 +322,13 @@ class Actions():
                 print("Plan cannot be executed")
                 return False
         return True
+
+    @staticmethod
+    def fake_move(s, position):
+        if s.in_scene(position):
+            s.r.eef_position = position
+            if s.r.attached:
+                s.r.attached.position = s.r.eef_position
+            return True
+        else:
+            return False
