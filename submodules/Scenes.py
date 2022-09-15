@@ -9,6 +9,8 @@ from submodules.Actions import Actions
 from submodules.features import Features
 from copy import deepcopy
 
+import time
+
 class Scene():
 
     def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=None, random=True, import_data=None):
@@ -98,6 +100,12 @@ class Scene():
         if self.r.attached is not None:
             v4[Objects.Object.all_types.index(self.r.attached.type)] = 1
 
+        # object types
+        v5 = np.zeros([7,3])
+        for n,obj, in enumerate(self.objects):
+            v5[n][obj.type_id] = 1
+        v5 = list(v5.flatten())
+
         if type == 0: # first trial
             return []
         elif type == 1: # all info - just to try it out
@@ -115,7 +123,14 @@ class Scene():
         elif type == 7:
             return [*v4]
         elif type == 8:
+            # focus field, object states
             return [*v2, *vo]
+        elif type == 9:
+            #focus field, object types,
+            return [*v2, *v5]
+        elif type == 10:
+            # focus field, object states, object types
+            return [*v2, *vo, *v5]
 
         else: raise Exception("Scene to observation - not the right type!")
 
@@ -498,6 +513,11 @@ class SceneCoppeliaInterface():
         position_real = self.s.position_real(position=self.s.r.eef_position)
         self.interface_handle.go_to_pose(position_real)
 
+        if s.r.attached is not None:
+            time.sleep(10)
+            self.interface_handle.add_or_edit_object(name=s.r.attached.name, pose=position_real)
+            self.interface_handle.pick_object(object=s.r.attached.name)
+
         if self.print_info: print("Scene initialization done!")
 
     def remove_objects_from_scene(self):
@@ -512,6 +532,7 @@ class SceneCoppeliaInterface():
 
         position_real = self.s.position_real(position=[2,0,3])
         self.interface_handle.go_to_pose(position_real)
+        time.sleep(6)
 
 
 

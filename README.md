@@ -3,7 +3,7 @@
 ## Install
 Either install with conda:
 ```
-conda install -c conda-forge pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz
+conda install -c conda-forge pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara
 ```
 or pip:
 ```

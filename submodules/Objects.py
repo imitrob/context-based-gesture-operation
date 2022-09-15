@@ -29,6 +29,10 @@ class Object():
         self.color = 'b'
         if random: self.color = np.random.choice(['r','g','b'])
 
+    @property
+    def type_id(self):
+        return self.all_types.index(self.type)
+
     def get_unique_state(self):
         ''' Unique state of the box is if it is on top '''
         return int(self.on_top)
