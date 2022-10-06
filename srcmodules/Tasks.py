@@ -1,6 +1,6 @@
 
-from submodules.Scenes import Scene
-from submodules.Actions import Actions
+from srcmodules.Scenes import Scene
+from srcmodules.Actions import Actions
 
 class CupToDrawer():
     ''' Static '''

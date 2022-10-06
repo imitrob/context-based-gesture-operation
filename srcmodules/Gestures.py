@@ -8,5 +8,3 @@ class Gestures():
 
 if __name__ == '__main__':
     print(Gestures.G)
-
-    

@@ -2,14 +2,12 @@
 >>> import sys; sys.path.append('..')
 '''
 import numpy as np
-import submodules.Objects as Objects
-import submodules.Robots as Robots
-from submodules.Users import Users
-from submodules.Actions import Actions
-from submodules.features import Features
+import srcmodules.Objects as Objects
+import srcmodules.Robots as Robots
+from srcmodules.Users import Users
+from srcmodules.Actions import Actions
+from srcmodules.SceneFieldFeatures import SceneFieldFeatures
 from copy import deepcopy
-
-import time
 
 class Scene():
 
@@ -27,14 +25,21 @@ class Scene():
         elif init == 'from_dict':
             random = False
             self.from_dict(import_data)
+        elif init == 'from_ros':
+            random = False
+            self.from_ros(import_data)
         else:
             self.objects = []
             obj_list = init.split(',')
             for obj in obj_list:
-                self.objects.append(getattr(Objects, obj.capitalize())(name=self.get_unique_object_name(obj), position=self.get_random_position_in_scene(), random=random))
+                p = None
+                if random: p = self.get_random_position_in_scene(type=obj)
+                else: p = self.get_position_in_scene()
+                self.objects.append(getattr(Objects, obj.capitalize())(name=self.get_unique_object_name(obj), position=p, random=random))
 
         if random:
-            self.r.eef_position = self.get_random_position_in_scene('z=3')
+            eef_position = self.get_random_position_in_scene('z=3,x<4')
+            self.r.eef_position = eef_position.copy()
             self.r.gripper_opened = bool(np.random.randint(2))
             self.r.eef_rotation = np.random.randint(2)
 
@@ -68,18 +73,19 @@ class Scene():
                 if o is not None:
                     if not Actions.do(self, ('pick_up', o), fake_handle_location=True): print(f"Error! attached {o}")
                     if not Actions.do(self, ('move_up', o), fake_handle_location=True): print(f"Error! attached {o}")
-
+            else:
+                self.r.eef_position = eef_position
 
     def scene_to_observation(self, type=1, focus_point=None, max_n_objects=7):
         v1 = np.zeros([max_n_objects+1])
         v1[self.get_gripper_object_id()] = 1
 
         v2 = np.zeros([max_n_objects])
-        focf = Features.eeff__feature(self.object_positions, focus_point)
+        focf = SceneFieldFeatures.eeff__feature(self.object_positions, focus_point)
         v2[:len(focf)] = focf
 
         v3 = np.zeros([max_n_objects])
-        eeff = Features.eeff__feature(self.object_positions, self.r.eef_position)
+        eeff = SceneFieldFeatures.eeff__feature(self.object_positions, self.r.eef_position)
         v3[:len(eeff)] = eeff
 
         v2_diff = np.zeros([max_n_objects])
@@ -111,7 +117,7 @@ class Scene():
         elif type == 1: # all info - just to try it out
             return self.experimental__get_obs()
         elif type == 2:
-            return Features.eeff__feature(self.object_positions, focus_point)
+            return SceneFieldFeatures.eeff__feature(self.object_positions, focus_point)
         elif type == 3:
             return [*v1, *v2]
         elif type == 4:
@@ -175,8 +181,8 @@ class Scene():
 
     def experimental__get_obs2(self):
         o = []
-        Features.eeff__feature(self.object_positions, self.r.eef_position)
-        Features.feaf__feature(object_sizes, gripper_range)
+        SceneFieldFeatures.eeff__feature(self.object_positions, self.r.eef_position)
+        SceneFieldFeatures.feaf__feature(object_sizes, gripper_range)
         return np.array(o).flatten()
 
     def get_gripper_object_id(self):
@@ -249,21 +255,34 @@ class Scene():
             name = unique_name+str(n)
         return name
 
-    def get_random_position_in_scene(self, constraint='on_ground,x!=0,free'):
+    def get_position_in_scene(self, constraint='', type=''):
+        for x in range(self.grid_lens[0]):
+            for y in range(self.grid_lens[1]):
+                p = [x, y, 0]
+                if self.collision_free_position(p):
+                    return p
+        raise Exception("Full scene?")
+
+    def get_random_position_in_scene(self, constraint='on_ground,x-cond,free', type='object'):
         xlen, ylen, zlen = self.grid_lens
+
+        if type=='object' or type=='cup': x_position = np.random.choice(range(xlen-2))+1
+        elif type=='drawer': x_position = 3
+        else: raise Exception(f"Not the right object type: {type}")
+
         if not constraint:
             p = np.hstack([np.random.choice(range(xlen)), np.random.choice(range(ylen)), np.random.choice(range(zlen))])
         elif constraint == 'on_ground':
             p = np.hstack([np.random.choice(range(xlen)), np.random.choice(range(ylen)), 0])
-        elif constraint == 'z=3':
-            p = np.hstack([np.random.choice(range(xlen)), np.random.choice(range(ylen)), 3])
-        elif constraint == 'on_ground,x!=0':
-            p = np.hstack([np.random.choice(range(xlen-1))+1, np.random.choice(range(4)), 0])
-        elif constraint == 'on_ground,x!=0,free':
-            p = np.hstack([np.random.choice(range(xlen-1))+1, np.random.choice(range(4)), 0])
+        elif constraint == 'z=3,x<4':
+            p = np.hstack([np.random.choice(range(xlen-1)), np.random.choice(range(ylen)), 3])
+        elif constraint == 'on_ground,x-cond':
+            p = np.hstack([x_position, np.random.choice(range(self.grid_lens[1])), 0])
+        elif constraint == 'on_ground,x-cond,free':
+            p = np.hstack([x_position, np.random.choice(range(self.grid_lens[1])), 0])
             i = 0
             while not self.collision_free_position(p):
-                p = np.hstack([np.random.choice(range(xlen-1))+1, np.random.choice(range(4)), 0])
+                p = np.hstack([np.random.choice(range(xlen-1))+1, np.random.choice(range(self.grid_lens[1])), 0])
                 i+=1
                 if i > 1000: raise Exception("Didn't found free space, scene too small!")
         return p
@@ -327,8 +346,8 @@ class Scene():
             scene_state['objects'][o.name]['pushable'] = o.pushable
             scene_state['objects'][o.name]['free'] = o.free
             scene_state['objects'][o.name]['size'] = o.size
-            scene_state['objects'][o.name]['above_str'] = o.above_list
-            scene_state['objects'][o.name]['under_str'] = o.under_list
+            scene_state['objects'][o.name]['above_str'] = o.above_str
+            scene_state['objects'][o.name]['under_str'] = o.under_str
 
             if o.type == 'drawer':
                 scene_state['objects'][o.name]['opened'] = o.opened
@@ -346,6 +365,40 @@ class Scene():
             }
         scene_state['user'] = self.u.name
         return scene_state
+
+    def to_ros(self, rosobj=None):
+        if rosobj is None: raise Exception("to_ros() function needs Scene ROS object to be filled!")
+        for n in range(7):
+            rosobj.objects[n].position = np.array([0,0,0], dtype=float)
+        for n,o in enumerate(self.objects):
+            rosobj.objects[n].name = o.name
+
+            rosobj.objects[n].position = np.array(o.position, dtype=float)
+            rosobj.objects[n].type = o.type
+            rosobj.objects[n].graspable = o.graspable
+            rosobj.objects[n].pushable = o.pushable
+            rosobj.objects[n].free = o.free
+            rosobj.objects[n].size = o.size
+            rosobj.objects[n].above_str = o.above_str
+            rosobj.objects[n].under_str = o.under_str
+
+            if o.type == 'drawer':
+                rosobj.objects[n].opened = o.opened
+                if o.contains_list != []:
+                    rosobj.objects[n].contains_list = o.contains_list[0]
+                else:
+                    rosobj.objects[n].contains_list = ''
+            if o.type == 'cup':
+                rosobj.objects[n].full = o.full
+
+        rosobj.robot_eef_position = np.array(self.r.eef_position, dtype=float)
+        rosobj.robot_gripper_opened = self.r.gripper_opened
+        rosobj.robot_eef_rotation = self.r.eef_rotation
+        rosobj.robot_attached_str = self.r.attached_str
+        rosobj.robot_gripper_range = self.r.gripper_range
+
+        rosobj.user = self.u.name
+        return rosobj
 
     def copy(self):
         return Scene(init='from_dict', import_data=self.to_dict())
@@ -399,6 +452,63 @@ class Scene():
                     self.r.attached = o
                     break
         self.u = Users(scene_state['user'])
+
+    def from_ros(self, scene_state):
+        objects = scene_state.objects
+        nobj=0
+        while True:
+            if scene_state.objects[nobj].name == '':
+                break
+            nobj+=1
+
+        self.objects = []
+        object_names = []
+        for n in range(nobj):
+            name = objects[n].name
+            object_names.append(name)
+
+            self.objects.append(getattr(Objects, objects[n].type.capitalize())(name=name, position=objects[n].position))
+            self.objects[n].type = objects[n].type
+            self.objects[n].graspable = objects[n].graspable
+            self.objects[n].pushable = objects[n].pushable
+            self.objects[n].size = objects[n].size
+
+            if objects[n].type == 'drawer':
+                self.objects[n].opened = objects[n].opened
+            if objects[n].type == 'cup':
+                self.objects[n].full = objects[n].full
+
+        for n in range(nobj):
+
+            under_str = objects[n].under_str
+            for o in self.objects:
+                if o.name == under_str:
+                    self.objects[n].under = o
+                    break
+            above_str = objects[n].above_str
+            for o in self.objects:
+                if o.name == above_str:
+                    self.objects[n].above = o
+                    break
+            if objects[n].type == 'drawer':
+                contains_list = objects[n].contains_list
+                for contain_item in contains_list:
+                    for o in self.objects:
+                        if o.name == contain_item:
+                            self.objects[n].contains.append(o)
+                            break
+
+        self.r = Robots.Robot()
+        self.r.eef_position = scene_state.robot_eef_position
+        self.r.gripper_opened = scene_state.robot_gripper_opened
+        self.r.eef_rotation = scene_state.robot_eef_rotation
+        self.r.attached = None
+        if scene_state.robot_attached_str != '':
+            for o in self.objects:
+                if o.name == scene_state.robot_attached_str:
+                    self.r.attached = o
+                    break
+        self.u = Users(scene_state.user)
 
     def __eq__(self, obj2):
         ''' Reward function
@@ -486,35 +596,41 @@ class SceneCoppeliaInterface():
 
         self.print_info = print_info
 
+    def new_observation(self, s, object):
+        oobj = getattr(s, object)
+        if oobj.type == 'drawer':
+            focus_point = oobj.position_real() + np.random.random(3)/10 + np.array([-0.10,0,0.0])
+        else:
+            focus_point = oobj.position_real() + np.random.random(3)/10 + np.array([0,0,0.02])
+
+        self.interface_handle.add_or_edit_object(name='Focus_target', pose=focus_point)
+
     def new_scene(self, s):
         '''
         Parameters:
             s (Scene): Scene instance
         '''
+        self.interface_handle.open_gripper()
         if self.s is not None:
             self.remove_objects_from_scene()
         self.s = s
-
 
         for o in s.objects:
             ''' simplified object creation '''
             if o.type == 'object':
                 self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), shape="cube")
             elif o.type == 'cup':
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), shape="cylinder")
+                self.interface_handle.add_or_edit_object(file="cup", name=o.name, frame_id='panda_link0', size=o.size*10, color=o.color, pose=o.position_real())
             elif o.type == 'drawer':
                 if o.name == 'drawer2': raise Exception("TODO")
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real())
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), object_state=o.opened_str)
             else: raise Exception(f"Object type {o.type} not in the list!")
-
-            #interface_handle.add_or_edit_object(file=f"{settings.paths.home}/{settings.paths.ws_folder}/src/mirracle_gestures/include/models/{file}", size=size, color=color, mass=mass, friction=friction, inertia=inertia, inertiaTransformation=inertiaTransformation, dynamic=dynamic, pub_info=pub_info, texture_file=texture_file, name=obj_name, pose=self.scenes[id].object_poses[i], frame_id=settings.base_link)
-            #interface_handle.add_or_edit_object(name=obj_name, frame_id=settings.base_link, size=size, color=color, pose=self.scenes[id].object_poses[i], shape='cube', mass=mass, friction=friction, inertia=inertia, inertiaTransformation=inertiaTransformation, dynamic=dynamic, pub_info=pub_info, texture_file=texture_file)
 
         position_real = self.s.position_real(position=self.s.r.eef_position)
         self.interface_handle.go_to_pose(position_real)
 
         if s.r.attached is not None:
-            time.sleep(10)
+            input("Scene finished -> press Enter")
             self.interface_handle.add_or_edit_object(name=s.r.attached.name, pose=position_real)
             self.interface_handle.pick_object(object=s.r.attached.name)
 
@@ -524,7 +640,7 @@ class SceneCoppeliaInterface():
         if self.s is None: return False
         for o in self.s.objects:
             if o.type == 'drawer' and o.name == 'drawer':
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[1.0,1.0,-0.5], object_state=o.opened_str)
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[1.0,1.0,-0.5])
             elif o.type == 'drawer' and o.name == 'drawer1':
                 self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=[1.0,-0.0,0.5])
             else:
@@ -532,7 +648,7 @@ class SceneCoppeliaInterface():
 
         position_real = self.s.position_real(position=[2,0,3])
         self.interface_handle.go_to_pose(position_real)
-        time.sleep(6)
+        input("Object removed on the scene? Press enter")
 
 
 

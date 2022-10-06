@@ -1,10 +1,12 @@
 ''' Conditioned by o
 '''
 import numpy as np
+import itertools
 
 class Actions():
     ''' Static Params '''
-    A = ['move_up', 'open', 'put', 'pour', 'close', 'pick_up']
+    #A = ['move_up', 'open', 'put', 'pour', 'close', 'pick_up']
+    A = ['move_up', 'move_left', 'move_down', 'move_right', 'put', 'put_on', 'pour', 'pick_up', 'place', 'open', 'close']
     ## Moves -> might be changed or will be subset of actions A
     A_move = ['move_back','move_right','move_up','move_front','move_left','move_down']
     A_move_directions = [[1,0,0], [0,1,0], [0,0,1],  [-1,0,0], [0,-1,0], [0,0,-1]]
@@ -82,13 +84,15 @@ class Actions():
 
     @staticmethod
     def do(s, action, ignore_location=False, out=False, p=0.9, handle_location=False, fake_handle_location=False):
-        '''
+        ''' Main method
         Parameters:
             s (Scene): Scene
             a (Tuple):
                 0 : Action
                 1 : Object name
             ignore_location (bool): Doesn't check the eef position to target obj
+            handle_location (bool): Execute sequence of actions to get the eef to the target
+            fake_handle_location (bool): Assigns the target position
             out (bool): Prints on the screen
         '''
         if isinstance(action, dict):
@@ -100,7 +104,7 @@ class Actions():
         if not Actions.is_action_from_move_category(action[0]) and handle_location:
             move_action_seq = s.plan_path_to_position(o.position, Actions)
             Actions.execute_path_to_position(s, move_action_seq)
-            #print(f"Executed move actions: {move_action_seq}")
+            if out: print(f"Executed move actions: {move_action_seq}")
 
         ret = getattr(Actions, action[0])(s, o, p, ignore_location=ignore_location)
         if not ret:
@@ -123,23 +127,38 @@ class Actions():
     def place(s, o=None, p=None, ignore_location=False):
         common_sense_proba = 1.
         if not s.r.attached: return False
-        i = 0
-        while True:
-            new_position = np.int64(np.hstack([np.random.choice(4, 2), 0]))
-            if s.collision_free_position(new_position):
-                if s.in_scene(new_position):
-                    break
-            i += 1
-            if i > 10000:
-                print(f"The object {o}")
-                s.info
-                raise Exception("Couldn't found new place where to push!")
+
+        new_position = Actions.find_free_location(s, s.r.eef_position[0:2])
 
         if common_sense_proba < p: return False
         s.r.attached.position = new_position
         s.r.attached = None
-
         return True
+
+    @staticmethod
+    def find_free_location(s, center, max_rad=3):
+        for r in range(max_rad+1):
+            new_position = Actions.find_free_location_for_radius(s, center, r)
+            if new_position is not None: return new_position
+
+        print(f"The object {o}")
+        s.info
+        raise Exception("Couldn't found new place where to push!")
+
+    @staticmethod
+    def find_free_location_for_radius(s, center, radius=1):
+        a = list(range(-radius, radius+1))
+
+        directions = [p for p in itertools.product(a, repeat=2)]
+        locations = np.array(directions) + center
+
+        for location in locations:
+            location_3d = np.hstack([location, np.array(0)])
+            if s.collision_free_position(location_3d):
+                if s.in_scene(location_3d):
+                    return location_3d
+        return None
+
 
     @staticmethod
     def put(s, o, p, ignore_location=False):

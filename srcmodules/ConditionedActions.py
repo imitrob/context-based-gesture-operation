@@ -1,7 +1,7 @@
 ''' Conditioned by o1, o2, measure
 '''
 import numpy as np
-from submodules import Scenes, Objects, Robots
+from srcmodules import Scenes, Objects, Robots
 
 class ConditionedAction():
     def __init__(self):

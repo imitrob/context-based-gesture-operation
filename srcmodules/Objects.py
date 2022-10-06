@@ -145,6 +145,8 @@ class Object():
             return False
         if self.inside_drawer:
             return False
+        if self is object_attached:
+            return False
         # current object name of object under
         self.above = object_attached
         if object_attached: object_attached.under = self
@@ -163,11 +165,13 @@ class Object():
 
     @property
     def above_str(self):
-        return obj.above.name
+        if self.above is None: return ""
+        return self.above.name
 
     @property
     def under_str(self):
-        return obj.under.name
+        if self.under is None: return ""
+        return self.under.name
 
     @property
     def above_list(self):
@@ -236,7 +240,7 @@ class Object():
         y_translation = (scene_lens[1]-1)*one_tile_lens[1]/2
 
         position_scaled = self.position * one_tile_lens
-        position_translated = position_scaled + [0.2, -y_translation, self.size]
+        position_translated = position_scaled + [0.2, -y_translation, self.size/2]
 
         z_add = 0
         slf = self
@@ -256,7 +260,7 @@ class Drawer(Object):
         self.contains = []
         self.type = 'drawer'
         self.max_allowed_size = 0.15
-        self.size = 0.15
+        self.size = 0.3
         self.stackable = True
         self.graspable = False
         self.pushable = False
@@ -283,7 +287,8 @@ class Drawer(Object):
 
     @property
     def opened_str(self):
-        return 'opened' if self.opened else 'closed'
+        ### TODO: not general !!! semi opened == opened now
+        return 'semi-opened' if self.opened else 'closed'
 
     def open(self):
         self.open_close_count += 1
@@ -340,7 +345,7 @@ class Cup(Object):
         self.type = 'cup'
         self.direction = np.array([0, 0, 1]) # default
         self.size = 0.01 # [m] height
-        if random: self.size = np.random.randint(4,11)/100
+        if random: self.size = np.random.randint(3,8)/100
         self.inside_drawer = False
         self.stackable = False
         self.graspable = True
