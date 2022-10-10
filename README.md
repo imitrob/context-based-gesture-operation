@@ -12,7 +12,8 @@ or pip:
 pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara
 ```
 
-Dependency on [teleop_gesture_toolbox](https://github.com/imitrob/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep).
+Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
+
 
 ## Notebooks available
 
