@@ -2,7 +2,7 @@
 <package format="2">
   <name>context_based_gesture_operation</name>
   <version>0.1.0</version>
-  <description>asdasd</description>
+  <description>context_based_gesture_operation</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <maintainer email="Petr.Vanc@cvut.cz">Petr Vanc</maintainer>
@@ -17,7 +17,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/mirracle_gestures</url> -->
+  <!-- <url type="website">http://wiki.ros.org/context_based_gesture_operation</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
