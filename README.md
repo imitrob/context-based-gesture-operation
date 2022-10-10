@@ -1,21 +1,39 @@
 # Context-based gesture control v0.1
 
-
-
 ## Install
-Either install with conda:
+
+1) Packages install with mamba (recommended):
 ```
-conda install -c conda-forge pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara
-```
-or pip:
-```
-pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara
+mamba create -n cbgo_env python=3.8
+mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep
 ```
 
-Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
+<details>
+<summary>or with Conda:</summary>
+<code>conda create -n robot_env python=3.8</code>
 
+<code>conda install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep</code>
+</details>
+
+<details>
+<summary>or wih Pip:</summary>
+
+<code>pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara</code>
+Install ROS noetic manually.
+Use python3.8.
+</details>
+
+2) Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
+```
+rosdep init
+rosdep update
+catkin build
+```
 
 ## Notebooks available
+- Run `roscore`
+Note: Kernel example can be run with `jupyter notebook`
+
 
 - Dataset generator (`nb11_dataset_generation_complete`)
 - Mapping gestures to intent, model evaluation (`nb12_model_classification_complete`)
