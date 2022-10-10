@@ -19,8 +19,8 @@ mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy 
 <summary>or wih Pip:</summary>
 
 <code>pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara</code>
-Install ROS noetic manually.
-Use python3.8.
+
+Install ROS noetic manually. Use python version 3.8.
 </details>
 
 2) Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
@@ -31,9 +31,11 @@ catkin build
 ```
 
 ## Notebooks available
-- Run `roscore`
-Note: Kernel example can be run with `jupyter notebook`
 
+- Run `roscore`
+- Run ipykernel (e.g. `jupyter notebook`)
+
+Examples:
 
 - Dataset generator (`nb11_dataset_generation_complete`)
 - Mapping gestures to intent, model evaluation (`nb12_model_classification_complete`)
