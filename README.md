@@ -23,7 +23,7 @@ mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy 
 Install ROS noetic manually. Use python version 3.8.
 </details>
 
-2) Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
+2) Dependency on [teleop_gesture_toolbox](https://github.com/imitrob/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://github.com/imitrob/coppelia_sim_ros_interface) as package.
 ```
 rosdep init
 rosdep update
