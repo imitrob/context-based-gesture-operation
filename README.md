@@ -1,29 +1,50 @@
 # Context-based gesture control v0.1
 
-Final version will be available on 7 October 2022.
-
 ## Install
-Either install with conda:
+
+1) Packages install with mamba (recommended):
 ```
-conda install -c conda-forge pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara
-```
-or pip:
-```
-pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara
+mamba create -n cbgo_env python=3.8
+mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep
 ```
 
-Dependency on [teleop_gesture_toolbox](https://github.com/imitrob/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep).
+<details>
+<summary>or with Conda:</summary>
+<code>conda create -n robot_env python=3.8</code>
+
+<code>conda install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep</code>
+</details>
+
+<details>
+<summary>or wih Pip:</summary>
+
+<code>pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara</code>
+
+Install ROS noetic manually. Use python version 3.8.
+</details>
+
+2) Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
+```
+rosdep init
+rosdep update
+catkin build
+```
 
 ## Notebooks available
 
+- Run `roscore`
+- Run ipykernel (e.g. `jupyter notebook`)
+
+Examples:
+
 - Dataset generator (`nb11_dataset_generation_complete`)
 - Mapping gestures to intent, model evaluation (`nb12_model_classification_complete`)
-- System pipeline (`nb15_system_pipeline_complete` - Full version available on 7 October 22)
+- System pipeline (`nb15_system_pipeline_complete`)
 
-#### Backend scene notebooks:
+#### Backend test notebooks:
 
 - Robot simulation (`nb10_robot_interface`)
-- Behavior tree (`nb14_btree_complete` - Full version available on 7 October 22)
+- Behavior tree (`nb14_btree_complete`)
 - Scene model introduction (`nb01_scene_and_actions`)
 - Scene model moves (`nb04_moves`)
 - Scene model additional features (`nb07_scene_additional_features`)

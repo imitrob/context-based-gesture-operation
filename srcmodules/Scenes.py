@@ -25,6 +25,9 @@ class Scene():
         elif init == 'from_dict':
             random = False
             self.from_dict(import_data)
+        elif init == 'from_ros':
+            random = False
+            self.from_ros(import_data)
         else:
             self.objects = []
             obj_list = init.split(',')
@@ -363,6 +366,40 @@ class Scene():
         scene_state['user'] = self.u.name
         return scene_state
 
+    def to_ros(self, rosobj=None):
+        if rosobj is None: raise Exception("to_ros() function needs Scene ROS object to be filled!")
+        for n in range(7):
+            rosobj.objects[n].position = np.array([0,0,0], dtype=float)
+        for n,o in enumerate(self.objects):
+            rosobj.objects[n].name = o.name
+
+            rosobj.objects[n].position = np.array(o.position, dtype=float)
+            rosobj.objects[n].type = o.type
+            rosobj.objects[n].graspable = o.graspable
+            rosobj.objects[n].pushable = o.pushable
+            rosobj.objects[n].free = o.free
+            rosobj.objects[n].size = o.size
+            rosobj.objects[n].above_str = o.above_str
+            rosobj.objects[n].under_str = o.under_str
+
+            if o.type == 'drawer':
+                rosobj.objects[n].opened = o.opened
+                if o.contains_list != []:
+                    rosobj.objects[n].contains_list = o.contains_list[0]
+                else:
+                    rosobj.objects[n].contains_list = ''
+            if o.type == 'cup':
+                rosobj.objects[n].full = o.full
+
+        rosobj.robot_eef_position = np.array(self.r.eef_position, dtype=float)
+        rosobj.robot_gripper_opened = self.r.gripper_opened
+        rosobj.robot_eef_rotation = self.r.eef_rotation
+        rosobj.robot_attached_str = self.r.attached_str
+        rosobj.robot_gripper_range = self.r.gripper_range
+
+        rosobj.user = self.u.name
+        return rosobj
+
     def copy(self):
         return Scene(init='from_dict', import_data=self.to_dict())
 
@@ -415,6 +452,63 @@ class Scene():
                     self.r.attached = o
                     break
         self.u = Users(scene_state['user'])
+
+    def from_ros(self, scene_state):
+        objects = scene_state.objects
+        nobj=0
+        while True:
+            if scene_state.objects[nobj].name == '':
+                break
+            nobj+=1
+
+        self.objects = []
+        object_names = []
+        for n in range(nobj):
+            name = objects[n].name
+            object_names.append(name)
+
+            self.objects.append(getattr(Objects, objects[n].type.capitalize())(name=name, position=objects[n].position))
+            self.objects[n].type = objects[n].type
+            self.objects[n].graspable = objects[n].graspable
+            self.objects[n].pushable = objects[n].pushable
+            self.objects[n].size = objects[n].size
+
+            if objects[n].type == 'drawer':
+                self.objects[n].opened = objects[n].opened
+            if objects[n].type == 'cup':
+                self.objects[n].full = objects[n].full
+
+        for n in range(nobj):
+
+            under_str = objects[n].under_str
+            for o in self.objects:
+                if o.name == under_str:
+                    self.objects[n].under = o
+                    break
+            above_str = objects[n].above_str
+            for o in self.objects:
+                if o.name == above_str:
+                    self.objects[n].above = o
+                    break
+            if objects[n].type == 'drawer':
+                contains_list = objects[n].contains_list
+                for contain_item in contains_list:
+                    for o in self.objects:
+                        if o.name == contain_item:
+                            self.objects[n].contains.append(o)
+                            break
+
+        self.r = Robots.Robot()
+        self.r.eef_position = scene_state.robot_eef_position
+        self.r.gripper_opened = scene_state.robot_gripper_opened
+        self.r.eef_rotation = scene_state.robot_eef_rotation
+        self.r.attached = None
+        if scene_state.robot_attached_str != '':
+            for o in self.objects:
+                if o.name == scene_state.robot_attached_str:
+                    self.r.attached = o
+                    break
+        self.u = Users(scene_state.user)
 
     def __eq__(self, obj2):
         ''' Reward function

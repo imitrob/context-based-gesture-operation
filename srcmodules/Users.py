@@ -8,6 +8,8 @@ class Users():
         #self.preference = ['pour', 'red']
         if isinstance(u, int):
             self.selected_id = u
+        elif u == '':
+            self.selected_id = 0
         else: # u is string
             self.selected_id = Users.U.index(u)
 

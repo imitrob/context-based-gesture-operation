@@ -2,6 +2,7 @@ from geometry_msgs.msg import Pose, Point, Quaternion
 from copy import deepcopy
 import numpy as np
 from srcmodules.Actions import Actions
+import time
 
 def act(s, cop, TaTo):
     if len(TaTo) == 3:
@@ -17,7 +18,19 @@ def act(s, cop, TaTo):
         return ret
     else: raise Exception("TaTo not the right length")
 
+
 class RobotActions():
+    execution_feedback = 'input'
+
+    @staticmethod
+    def wait(step=1, n_steps=1):
+        if RobotActions.execution_feedback == 'input':
+            if bool(input(f"{step}/{n_steps}, enter to continue, anystr else to abort!")): return False
+        elif RobotActions.execution_feedback == 'behavior_tree':
+            pass # TODO
+        elif RobotActions.execution_feedback == 'time':
+            time.sleep(5.)
+        else: raise Exception("Wrong option!")
 
     @staticmethod
     def do(s, cop, TaTo):
@@ -31,7 +44,8 @@ class RobotActions():
         pos = s.position_real(block_position)
 
         cop.go_to_pose(Pose(Point(*pos), Quaternion(0,1,0,0)))
-        if bool(input("1/1, enter to continue, anystr else to abort!")): return False
+        RobotActions.wait()
+        #if bool(input("1/1, enter to continue, anystr else to abort!")): return False
         return True
 
     @staticmethod
