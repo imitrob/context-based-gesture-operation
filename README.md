@@ -1,13 +1,39 @@
 # Context-based gesture control v0.1
 
+## Dependencies
+
+- Conda, e.g. Miniconda [download](https://docs.conda.io/en/latest/miniconda.html)
+- [Coppelia Sim](https://www.coppeliarobotics.com/) simulator ([install](include/scripts/coppelia_sim_install.sh))
+  - (Recommended) Use version 4.1 (PyRep can have problems with newer versions)
+  - Please install Coppelia Sim files to your home folder: `~/CoppeliaSim`
+```
+cd ~
+wget --no-check-certificate https://www.coppeliarobotics.com/files/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+tar -xf CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+mv CoppeliaSim_Edu_V4_1_0_Ubuntu20_04 CoppeliaSim
+rm CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+```
+
+### Optional dependencies:
+
+- [Leap Motion Controller](https://www.ultraleap.com/product/leap-motion-controller/) as a hand sensor ([install](https://developer.leapmotion.com/tracking-software-download), use version 2.3.1)
+```
+tar -xvzf Leap_Motion_SDK_Linux_2.3.1.tgz
+cd LeapDeveloperKit_2.3.1+31549_linux/
+sudo dpkg -i Leap-2.3.1+31549-x64.deb
+```
+
 ## Install
 
-- Packages install with mamba (recommended):
-- Dependency on [teleop_gesture_toolbox](https://github.com/imitrob/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep) and [ROS interface](https://github.com/imitrob/coppelia_sim_ros_interface).
+- Packages install with mamba:
+
 ```
+conda install mamba -c conda-forge # Install mamba
+
 mamba create -n cbgo_env python=3.8
 conda activate cbgo_env
 mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep ros-noetic-py-trees ros-noetic-py-trees-msgs ros-noetic-py-trees-ros 
+# packages from teleop.... (future -> rosdep)
 
 # Reactivate conda env before proceeding. 
 conda deactivate
@@ -31,24 +57,18 @@ source $ws/devel/setup.bash
 # make activation script
 echo "export ws=$ws
 conda activate cbgo_env
-source $ws/devel/setup.bash" > ~/activate_cbgo.sh
+source $ws/devel/setup.bash
+export COPPELIASIM_ROOT=$HOME/CoppeliaSim
+export LD_LIBRARY_PATH=$HOME/CoppeliaSim;
+export QT_QPA_PLATFORM_PLUGIN_PATH=$HOME/CoppeliaSim;" > ~/activate_cbgo.sh
+source ~/activate_cbgo.sh
+
+cd $ws/src
+git clone https://github.com/imitrob/PyRep.git
+cd PyRep
+pip install -r requirements.txt
+pip install .
 ```
-
-<details>
-<summary>or with Conda:</summary>
-<code>conda create -n robot_env python=3.8</code>
-
-<code>conda install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep</code>
-</details>
-
-<details>
-<summary>or wih Pip:</summary>
-
-<code>pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara</code>
-
-Install ROS noetic manually. Use python version 3.8.
-</details>
-
 
 
 
