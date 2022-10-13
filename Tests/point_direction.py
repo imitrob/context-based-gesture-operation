@@ -1,6 +1,23 @@
 
 import numpy as np
 
+''' The Leap Motion base to Robot base '''
+def calibrate_leap_motion():
+    ''' Calibration procedure
+    Returns:
+        transformation matrix 4x4
+    - Note: Measured by ruler
+    '''
+    return np.array([[1, 0, 0, 1.07],
+                     [0, 1, 0,-0.40],
+                     [0, 0, 1, 0.01],
+                     [0, 0, 0, 1   ]])
+
+def leap_motion_to_world_link(p):
+    T = calibrate_leap_motion()
+    # TMP
+    return [T[0,3], T[1,3], T[2,3]]
+
 def get_closest_point_to_line(line_points, test_point):
     ''' Line points
     '''
@@ -18,7 +35,7 @@ def get_closest_point_to_line(line_points, test_point):
 def get_id_of_closest_point_to_line(line_points, test_points, max_dist=np.inf):
     '''
     Embedding: line_points are start and end of last bone (distal) from pointing finger (2nd finger)
-    test_points: 
+    test_points:
     '''
     distances_from_line = []
     for test_point in test_points:
@@ -47,3 +64,11 @@ if __name__ == '__main__':
     test_points = ((0.0, 0.0, 0.99999), (10.0, 0.0, 1.0), (10.0, 0.0, 2.0))
     closest_point = get_id_of_closest_point_to_line(line_points, test_points, max_dist=0.3)
     closest_point
+
+def main(frame, scene, max_dist=np.inf):
+    #f = frame_lib.Frame(frame, leapgestures)
+    #s = Scene(init='object,drawer,cup')
+    line_points = (f.l.fingers[1].bones[3].prev_joint(), f.l.fingers[1].bones[3].next_joint())
+    test_points = cene.object_positions
+
+    return get_id_of_closest_point_to_line(line_points, test_points, max_dist=max_dist)
