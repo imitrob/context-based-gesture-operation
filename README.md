@@ -32,9 +32,7 @@ conda install mamba -c conda-forge # Install mamba
 
 mamba create -n cbgo_env python=3.8
 conda activate cbgo_env
-mamba install -c conda-forge -c robostack -c robostack-experimental -c speleo3 pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep ros-noetic-py-trees ros-noetic-py-trees-msgs ros-noetic-py-trees-ros leap-motion-python fastdtw
-TODO: Move install to rosdep
-pip install autograd
+mamba env update -n cbgo_env --file environment.yml
 
 # Reactivate conda env before proceeding.
 conda deactivate
@@ -67,7 +65,6 @@ source ~/activate_cbgo.sh
 cd $ws/src
 git clone https://github.com/imitrob/PyRep.git
 cd PyRep
-pip install -r requirements.txt
 pip install .
 ```
 
@@ -83,9 +80,9 @@ roscore
 source ~/activate_cbgo.sh
 jupyter-lab
 ```
-Examples:
+#### Examples:
 
-TODO ADD VISUALS
+TODO: ADD VISUALS
 - Dataset generator (`nb11_dataset_generation_complete`)
 - Mapping gestures to intent, model evaluation (`nb12_model_classification_complete`)
 - System pipeline (`nb15_system_pipeline_complete`)
