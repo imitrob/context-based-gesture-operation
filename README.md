@@ -5,6 +5,7 @@
 1) Packages install with mamba (recommended):
 ```
 mamba create -n cbgo_env python=3.8
+mamba activate cbgo_env
 mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep
 ```
 
