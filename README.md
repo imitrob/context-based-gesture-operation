@@ -7,7 +7,7 @@
 ```
 mamba create -n cbgo_env python=3.8
 conda activate cbgo_env
-mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep 
+mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep ros-noetic-py-trees ros-noetic-py-trees-msgs ros-noetic-py-trees-ros 
 
 # Reactivate conda env before proceeding. 
 conda deactivate
