@@ -1,0 +1,29 @@
+name: cbgo_env
+channels:
+  - speleo3
+  - robostack
+  - robostack-experimental
+  - conda-forge
+dependencies:
+  - pymc3
+  - numpy
+  - matplotlib
+  - pandas
+  - pygraphviz
+  - seaborn
+  - deepdiff
+  - scikit-learn
+  - arviz
+  - aesara
+  - ros-noetic-desktop
+  - ros-noetic-moveit-visual-tools
+  - catkin_tools
+  - rosdep
+  - ros-noetic-py-trees
+  - ros-noetic-py-trees-msgs
+  - ros-noetic-py-trees-ros
+  - leap-motion-python
+  - fastdtw
+  - cffi==1.14.2
+  - pip:
+    - autograd
