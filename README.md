@@ -32,16 +32,9 @@ conda install mamba -c conda-forge # Install mamba
 
 mamba create -n cbgo_env python=3.8
 conda activate cbgo_env
-<<<<<<< HEAD
 mamba env update -n cbgo_env --file environment.yml
 
-# Reactivate conda env before proceeding.
-=======
-mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep ros-noetic-py-trees ros-noetic-py-trees-msgs ros-noetic-py-trees-ros 
-# packages from teleop.... (future -> rosdep)
-
 # Reactivate conda env before proceeding. 
->>>>>>> 1776419cb9fddac766b9f0370804ffda4b87c96b
 conda deactivate
 conda activate cbgo_env  
 
@@ -72,10 +65,6 @@ source ~/activate_cbgo.sh
 cd $ws/src
 git clone https://github.com/imitrob/PyRep.git
 cd PyRep
-<<<<<<< HEAD
-=======
-pip install -r requirements.txt
->>>>>>> 1776419cb9fddac766b9f0370804ffda4b87c96b
 pip install .
 ```
 
@@ -91,11 +80,7 @@ roscore
 source ~/activate_cbgo.sh
 jupyter-lab
 ```
-<<<<<<< HEAD
 #### Examples:
-=======
-Examples:
->>>>>>> 1776419cb9fddac766b9f0370804ffda4b87c96b
 
 TODO: ADD VISUALS
 - Dataset generator (`nb11_dataset_generation_complete`)
