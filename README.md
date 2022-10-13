@@ -2,11 +2,36 @@
 
 ## Install
 
-1) Packages install with mamba (recommended):
+- Packages install with mamba (recommended):
+- Dependency on [teleop_gesture_toolbox](https://github.com/imitrob/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep) and [ROS interface](https://github.com/imitrob/coppelia_sim_ros_interface).
 ```
 mamba create -n cbgo_env python=3.8
 conda activate cbgo_env
-mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep
+mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep 
+
+# Reactivate conda env before proceeding. 
+conda deactivate
+conda activate cbgo_env  
+
+export ws=<path/to/catkin/ws>
+mkdir -p $ws/src
+cd $ws/src
+git clone https://github.com/imitrob/context_based_gesture_operation.git
+git clone https://github.com/imitrob/teleop_gesture_toolbox.git
+git clone https://github.com/imitrob/coppelia_sim_ros_interface.git
+
+cd $ws
+rosdep init
+rosdep update
+rosdep install --from-paths src --ignore-src -r -y
+catkin build
+
+source $ws/devel/setup.bash
+
+# make activation script
+echo "export ws=$ws
+conda activate cbgo_env
+source $ws/devel/setup.bash" > ~/activate_cbgo.sh
 ```
 
 <details>
@@ -24,18 +49,19 @@ mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy 
 Install ROS noetic manually. Use python version 3.8.
 </details>
 
-2) Dependency on [teleop_gesture_toolbox](https://github.com/imitrob/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://github.com/imitrob/coppelia_sim_ros_interface) as package.
-```
-rosdep init
-rosdep update
-catkin build
-```
+
+
 
 ## Notebooks available
+```
+# In terminal 1:
+source ~/activate_cbgo.sh
+roscore
 
-- Run `roscore`
-- Run ipykernel (e.g. `jupyter notebook`)
-
+# in terminal 2:
+source ~/activate_cbgo.sh
+jupyter-lab
+```
 Examples:
 
 - Dataset generator (`nb11_dataset_generation_complete`)
