@@ -1,45 +1,94 @@
 # Context-based gesture control v0.1
 
+## Dependencies
+
+- Conda, e.g. Miniconda [download](https://docs.conda.io/en/latest/miniconda.html)
+- [Coppelia Sim](https://www.coppeliarobotics.com/) simulator ([install](include/scripts/coppelia_sim_install.sh))
+  - (Recommended) Use version 4.1 (PyRep can have problems with newer versions)
+  - Please install Coppelia Sim files to your home folder: `~/CoppeliaSim`
+```
+cd ~
+wget --no-check-certificate https://www.coppeliarobotics.com/files/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+tar -xf CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+mv CoppeliaSim_Edu_V4_1_0_Ubuntu20_04 CoppeliaSim
+rm CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+```
+
+### Optional dependencies:
+
+- [Leap Motion Controller](https://www.ultraleap.com/product/leap-motion-controller/) as a hand sensor ([install](https://developer.leapmotion.com/tracking-software-download), use version 2.3.1)
+```
+tar -xvzf Leap_Motion_SDK_Linux_2.3.1.tgz
+cd LeapDeveloperKit_2.3.1+31549_linux/
+sudo dpkg -i Leap-2.3.1+31549-x64.deb
+```
+
 ## Install
 
-1) Packages install with mamba (recommended):
+- Packages install with mamba:
+
 ```
+conda install mamba -c conda-forge # Install mamba
+
 mamba create -n cbgo_env python=3.8
-mamba install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep
-```
+conda activate cbgo_env
+mamba install -c conda-forge -c robostack -c robostack-experimental -c speleo3 pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop ros-noetic-moveit-visual-tools catkin_tools rosdep ros-noetic-py-trees ros-noetic-py-trees-msgs ros-noetic-py-trees-ros leap-motion-python fastdtw
+TODO: Move install to rosdep
+pip install autograd
 
-<details>
-<summary>or with Conda:</summary>
-<code>conda create -n robot_env python=3.8</code>
+# Reactivate conda env before proceeding.
+conda deactivate
+conda activate cbgo_env  
 
-<code>conda install -c conda-forge -c robostack -c robostack-experimental pymc3 numpy matplotlib pandas pygraphviz seaborn deepdiff scikit-learn arviz aesara ros-noetic-desktop catkin_tools rosdep</code>
-</details>
+export ws=<path/to/catkin/ws>
+mkdir -p $ws/src
+cd $ws/src
+git clone https://github.com/imitrob/context_based_gesture_operation.git
+git clone https://github.com/imitrob/teleop_gesture_toolbox.git
+git clone https://github.com/imitrob/coppelia_sim_ros_interface.git
 
-<details>
-<summary>or wih Pip:</summary>
-
-<code>pip install pymc3 numpy matplotlib pandas graphviz seaborn deepdiff scikit-learn arviz aesara</code>
-
-Install ROS noetic manually. Use python version 3.8.
-</details>
-
-2) Dependency on [teleop_gesture_toolbox](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/teleop_gesture_toolbox) (ROS, CoppeliaSim, PyRep). Clone also the [ROS interface](https://gitlab.ciirc.cvut.cz/imitrob/mirracle/coppelia_sim_ros_interface) as package.
-```
+cd $ws
 rosdep init
 rosdep update
+rosdep install --from-paths src --ignore-src -r -y
 catkin build
+
+source $ws/devel/setup.bash
+
+# make activation script
+echo "export ws=$ws
+conda activate cbgo_env
+source $ws/devel/setup.bash
+export COPPELIASIM_ROOT=$HOME/CoppeliaSim
+export LD_LIBRARY_PATH=$HOME/CoppeliaSim;
+export QT_QPA_PLATFORM_PLUGIN_PATH=$HOME/CoppeliaSim;" > ~/activate_cbgo.sh
+source ~/activate_cbgo.sh
+
+cd $ws/src
+git clone https://github.com/imitrob/PyRep.git
+cd PyRep
+pip install -r requirements.txt
+pip install .
 ```
 
+
+
 ## Notebooks available
+```
+# In terminal 1:
+source ~/activate_cbgo.sh
+roscore
 
-- Run `roscore`
-- Run ipykernel (e.g. `jupyter notebook`)
-
+# in terminal 2:
+source ~/activate_cbgo.sh
+jupyter-lab
+```
 Examples:
 
+TODO ADD VISUALS
 - Dataset generator (`nb11_dataset_generation_complete`)
 - Mapping gestures to intent, model evaluation (`nb12_model_classification_complete`)
-- System pipeline (`nb15_system_pipeline_complete` - Full version available on 7 October 22)
+- System pipeline (`nb15_system_pipeline_complete`)
 
 #### Backend test notebooks:
 
