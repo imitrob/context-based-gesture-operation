@@ -3,8 +3,10 @@
 >>> import srcmodules.Scenes; importlib.reload(srcmodules.Scenes)
 >>> import sys; sys.path.append("..")
 '''
-import rospy
-from context_based_gesture_operation.srv import G2I, G2IResponse
+import rclpy
+from rclpy.node import Node
+
+from context_based_gesture_operation.srv import G2I
 from context_based_gesture_operation.msg import Intent
 from context_based_gesture_operation.msg import Scene as SceneRos
 from context_based_gesture_operation.msg import Gestures as GesturesRos
@@ -20,11 +22,10 @@ from srcmodules.SceneFieldFeatures import SceneFieldFeatures
 >>> s = Scene(init='from_ros', import_data=sceneros)
 '''
 
-class G2IService():
+class G2IRosNode(Node):
     def __init__(self, G=Gestures.G, A=Actions.A, init_node=False, type='G2I_callback_direct_mapping'):
-        if init_node:
-            rospy.init_node("g2i_node")
-        rospy.Service('/g2i', G2I, getattr(self,type))
+        super().__init__("G2IServiceNode")
+        self.create_service(G2I, '/g2i', getattr(self,type))
 
         self.G = Gestures.G = G
         self.A = Actions.A = A
@@ -54,3 +55,7 @@ class G2IService():
         i.target_object = s.O[nojb]
         print(f"intent {i.target_action}, {i.target_object}")
         return G2IResponse(i)
+
+def init():
+    global rosnode
+    rosnode = None

@@ -2,7 +2,8 @@ import functools
 import py_trees
 import py_trees_ros
 import py_trees.console as console
-import rospy
+import rclpy
+from rclpy.node import Node
 import sys, os
 import numpy as np
 import std_msgs.msg as std_msgs
@@ -14,11 +15,12 @@ from context_based_gesture_operation.msg import Scene as SceneRos
 from srcmodules.Scenes import Scene, SceneCoppeliaInterface
 from srcmodules.Actions import Actions
 from srcmodules.RobotActions import RobotActions,act
+from agent_nodes import g2i
 
 from py_trees_ros import subscribers
 from context_based_gesture_operation.msg import Intent
 from context_based_gesture_operation.msg import Gestures as GesturesRos
-from context_based_gesture_operation.srv import G2I, G2IResponse
+from context_based_gesture_operation.srv import G2I
 
 def shutdown(behaviour_tree):
     behaviour_tree.interrupt()
@@ -26,7 +28,7 @@ def shutdown(behaviour_tree):
 class UpdateScene(subscribers.ToBlackboard):
     def __init__(self, name, threshold=30.0):
         super(UpdateScene, self).__init__(name=name, topic_name="/tree/scene_in", topic_type=SceneRos,
-        blackboard_variables={"scene": None}, clearing_policy=py_trees.common.ClearingPolicy.NEVER)
+        blackboard_variables={"scene": None}, clearing_policy=py_trees.common.ClearingPolicy.NEVER, qos_profile=5)
 
         self.blackboard = py_trees.blackboard.Blackboard()
         self.blackboard.scene = SceneRos()
@@ -40,7 +42,7 @@ class UpdateScene(subscribers.ToBlackboard):
         if status != py_trees.common.Status.RUNNING:
             if self.blackboard.scene.robot_attached_str != "":
                 self.blackboard.some_var_1 = True
-                rospy.logwarn_throttle(60, "%s: gripper attached!" % self.name)
+                rclpy.logwarn_throttle(60, "%s: gripper attached!" % self.name)
             else:
                 self.blackboard.some_var_1 = False
 
@@ -52,7 +54,7 @@ class UpdateScene(subscribers.ToBlackboard):
 class UpdateGestures(subscribers.ToBlackboard):
     def __init__(self, name, threshold=30.0):
         super(UpdateGestures, self).__init__(name=name, topic_name="/tree/gestures_in", topic_type=GesturesRos,
-        blackboard_variables={"gestures": None}, clearing_policy=py_trees.common.ClearingPolicy.NEVER)
+        blackboard_variables={"gestures": None}, clearing_policy=py_trees.common.ClearingPolicy.NEVER, qos_profile=5)
 
         self.blackboard = py_trees.blackboard.Blackboard()
         self.blackboard.gestures = GesturesRos()
@@ -78,12 +80,14 @@ class GenerateIntent(py_trees.behaviour.Behaviour):
 
     def update(self):
         self.logger.debug("%s.update()" % self.__class__.__name__)
-        try:
-            g2i = rospy.ServiceProxy('g2i', G2I)
-            response = g2i(gestures=self.blackboard.gestures, scene=self.blackboard.scene)
-        except rospy.ServiceException as e:
-            print("Service call failed: %s"%e)
-            return py_trees.common.Status.FAILURE
+
+        self.g2i = rclpy.create_client(G2I, 'g2i')
+        while not self.g2i.wait_for_service(timeout_sec=1.0):
+            print('service not available, waiting again...')
+        self.req = G2I.Request(gestures=self.blackboard.gestures, scene=self.blackboard.scene)
+        self.future = self.g2i.call_async(self.req)
+        rclpy.spin_until_future_complete(self, self.future)
+        return self.future
 
         intent = response.intent
         self.blackboard.target_action = intent.target_action
@@ -98,7 +102,7 @@ class ExecuteTA(py_trees.behaviour.Behaviour):
         super(ExecuteTA, self).__init__(name=name)
 
     def setup(self, timeout):
-        self.publisher = rospy.Publisher("/execute_intent", Intent, queue_size=10, latch=True)
+        self.publisher = rclpy.create_publisher(Intent, "/execute_intent", 10, latch=True)
         self.feedback_message = "setup"
         return True
 
@@ -178,7 +182,7 @@ class HoldingPrecondition(py_trees.behaviour.Behaviour):
 class PickTO(py_trees.behaviour.Behaviour):
     def __init__(self, name):
         super(PickTO, self).__init__(name=name)
-        self.publisher = rospy.Publisher("/execute_intent", Intent, queue_size=10, latch=True)
+        self.publisher = g2i.rosnode.create_publisher(Intent, "/execute_intent", 10)
         self.blackboard = py_trees.blackboard.Blackboard()
 
     def setup(self, timeout):
@@ -189,7 +193,7 @@ class PickTO(py_trees.behaviour.Behaviour):
         self.blackboard.holding_precondition = False
         self.logger.debug("%s.update()" % self.__class__.__name__)
 
-        self.publisher.publish(Intent('pick_up', self.blackboard.held_object, ""))
+        self.publisher.publish(Intent(target_action='pick_up', target_object=self.blackboard.held_object, auxiliary_parameters=""))
         self.feedback_message = f"picking up object {self.blackboard.held_object}"
 
         return py_trees.common.Status.SUCCESS
@@ -243,7 +247,7 @@ class HandEmpty(py_trees.behaviour.Behaviour):
 class PlaceObject(py_trees.behaviour.Behaviour):
     def __init__(self, name):
         super(PlaceObject, self).__init__(name=name)
-        self.publisher = rospy.Publisher("/execute_intent", Intent, queue_size=10, latch=True)
+        self.publisher = g2i.rosnode.create_publisher(Intent, "/execute_intent", 10)
         self.blackboard = py_trees.blackboard.Blackboard()
 
     def setup(self, timeout):
@@ -264,7 +268,7 @@ class PlaceObject(py_trees.behaviour.Behaviour):
 class ToggleDrawer(py_trees.behaviour.Behaviour):
     def __init__(self, name):
         super(ToggleDrawer, self).__init__(name=name)
-        self.publisher = rospy.Publisher("/execute_intent", Intent, queue_size=10, latch=True)
+        self.publisher = g2i.rosnode.create_publisher(Intent, "/execute_intent", 10)
         self.blackboard = py_trees.blackboard.Blackboard()
 
     def setup(self, timeout):
@@ -286,10 +290,10 @@ class ToggleDrawer(py_trees.behaviour.Behaviour):
                     return py_trees.common.Status.FAILURE
 
         if self.blackboard.scene.objects[n].opened: # drawer is opened
-            self.publisher.publish(Intent('close', o_name, ""))
+            self.publisher.publish(Intent(target_action='close', target_object=o_name, auxilary_parameters=""))
             self.feedback_message = f"Opening {o_name}"
         else:
-            self.publisher.publish(Intent('open', o_name, ""))
+            self.publisher.publish(Intent(target_action='open', target_object=o_name, auxilary_parameters=""))
             self.feedback_message = f"Opening {o_name}"
 
         return py_trees.common.Status.SUCCESS

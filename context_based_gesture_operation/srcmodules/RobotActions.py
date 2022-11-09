@@ -43,7 +43,7 @@ class RobotActions():
         block_position = s.r.eef_position# + np.array(direction)
         pos = s.position_real(block_position)
 
-        cop.go_to_pose(Pose(Point(*pos), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos[0],y=pos[1],z=pos[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         RobotActions.wait()
         #if bool(input("1/1, enter to continue, anystr else to abort!")): return False
         return True
@@ -75,9 +75,9 @@ class RobotActions():
 
         cop.open_gripper()
         if bool(input("1/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*pos_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_upper[0],y=pos_upper[1],z=pos_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("2/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*pos), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos[0],y=pos[1],z=pos[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("3/4, enter to continue, anystr else to abort!")): return False
         cop.pick_object(object_name)
         if bool(input("4/4, enter to continue, anystr else to abort!")): return False
@@ -102,13 +102,13 @@ class RobotActions():
         pos_release_upper = deepcopy(pos_release)
         pos_release_upper[2] += 0.3
 
-        cop.go_to_pose(Pose(Point(*pos_release_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_release_upper[0], y= pos_release_upper[1], z=pos_release_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("1/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*pos_release), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_release[0], y=pos_release[1], z=pos_release[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("2/4, enter to continue, anystr else to abort!")): return False
         cop.release_object()
         if bool(input("3/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*pos_release_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_release_upper[0], y=pos_release_upper[1], z=pos_release_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("4/4, enter to continue, anystr else to abort!")): return False
 
         return True
@@ -124,13 +124,13 @@ class RobotActions():
         pos_release_upper = deepcopy(pos_release)
         pos_release_upper[2] += 0.1
 
-        cop.go_to_pose(Pose(Point(*pos_release_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_release_upper[0], y=pos_release_upper[1],z=pos_release_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("1/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*pos_release), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_release[0], y=pos_release[1],z=pos_release[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("2/4, enter to continue, anystr else to abort!")): return False
         cop.release_object()
         if bool(input("3/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*pos_release_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_release_upper[0], y=pos_release_upper[1] ,z=pos_release_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("4/4, enter to continue, anystr else to abort!")): return False
 
         return True
@@ -139,13 +139,13 @@ class RobotActions():
     def place(s, cop, object_name, place_position):
         position_upper = place_position + np.array([0.0, 0.0, 0.05])
 
-        cop.go_to_pose(Pose(Point(*position_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=position_upper[0],y=position_upper[1],z=position_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("1/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*place_position), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=place_position[0],y=place_position[1],z=place_position[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("2/4, enter to continue, anystr else to abort!")): return False
         cop.release_object()
         if bool(input("3/4, enter to continue, anystr else to abort!")): return False
-        cop.go_to_pose(Pose(Point(*position_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=position_upper[0],y=position_upper[1],z=position_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("4/4, enter to continue, anystr else to abort!")): return False
 
         return True
@@ -161,23 +161,23 @@ class RobotActions():
         cop.add_or_edit_object(name='drawer', pose=s.drawer.position_real(), object_state='slightly-opened')
 
         position_withdrawn = position_opened - np.array([0.0,0,-0.1])
-        cop.go_to_pose(pose=Pose(Point(*position_withdrawn), Quaternion(0.0,1.,0.,0)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0],y=position_withdrawn[1],z=position_withdrawn[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
 
         if bool(input("1/5, enter to continue, anystr else to abort!")): return False
         position_withdrawn = position_opened + np.array([0.09,0,0.1])
-        cop.go_to_pose(pose=Pose(Point(*position_withdrawn), Quaternion(0.0,1.,0.,0)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0],y=position_withdrawn[1],z=position_withdrawn[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
 
         if bool(input("2/5, enter to continue, anystr else to abort!")): return False
         position_withdrawn = position_opened + np.array([0.09,0,0.0])
-        cop.go_to_pose(pose=Pose(Point(*position_withdrawn), Quaternion(0.0,1.,0.,0)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0],y=position_withdrawn[1],z=position_withdrawn[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("3/5, enter to continue, anystr else to abort!")): return False
 
         position_withdrawn = position_opened + np.array([0.04,0,0.0])
-        cop.go_to_pose(pose=Pose(Point(*position_withdrawn), Quaternion(0.0,1.,0.,0)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0],y=position_withdrawn[1],z=position_withdrawn[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("4/5, enter to continue, anystr else to abort!")): return False
 
         position_withdrawn = position_opened + np.array([-0.02,0,0.0])
-        cop.go_to_pose(pose=Pose(Point(*position_withdrawn), Quaternion(0.0,1.,0.,0)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0],y=position_withdrawn[1],z=position_withdrawn[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("5/5, enter to continue, anystr else to abort!")): return False
 
     @staticmethod
@@ -192,17 +192,17 @@ class RobotActions():
         cop.open_gripper()
         if bool(input("1/5, enter to continue, anystr else to abort!")): return False
         position_front = position_handle - np.array([0.05,0,0])
-        cop.go_to_pose(Pose(Point(*position_front), Quaternion(0.0,np.pi/2,0.,1000)))
+        cop.go_to_pose(Pose(position=Point(x=position_front[0],y=position_front[1],z=position_front[2]), orientation=Quaternion(x=0.0,y=np.pi/2,z=0.,w=1000.)))
         if bool(input("2/5, enter to continue, anystr else to abort!")): return False
-        ''' Go to the location in front of a drawer '''
-        cop.go_to_pose(pose=Pose(Point(*position_handle), Quaternion(0.0,np.pi/2,0.,1000)))
+        """ Go to the location in front of a drawer """
+        cop.go_to_pose(pose=Pose(position=Point(x=position_handle[0], y=position_handle[1], z=position_handle[2]), orientation=Quaternion(x=0.0,y=np.pi/2,z=0.,w=1000.)))
         if bool(input("3/5, enter to continue, anystr else to abort!")): return False
         position_handle_closed = position_handle + np.array([0.1,0.0,0.0])
-        cop.go_to_pose(pose=Pose(Point(*position_handle_closed), Quaternion(0.0,np.pi/2,0.,1000)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_handle_closed[0], y=position_handle_closed[1], z=position_handle_closed[2]), orientation=Quaternion(x=0.0,y=np.pi/2,z=0.,w=1000.)))
 
         if bool(input("4/5, enter to continue, anystr else to abort!")): return False
         position_withdrawn = position_handle_closed - np.array([0.05,0,0])
-        cop.go_to_pose(pose=Pose(Point(*position_withdrawn), Quaternion(0.0,np.pi/2,0.,1000)))
+        cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0], y=position_withdrawn[1], z=position_withdrawn[2]), orientation=Quaternion(x=0.0,y=np.pi/2,z=0.,w=1000.)))
         if bool(input("5/5, enter to continue, anystr else to abort!")): return False
 
         return True
@@ -214,13 +214,13 @@ class RobotActions():
         pos_upper[2] += 0.1
 
         ''' Go to position above the pouring object '''
-        cop.go_to_pose(Pose(Point(*pos_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_upper[0],y=pos_upper[1],z=pos_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("1/3, enter to continue, anystr else to abort!")): return False
         ''' Rotate/Pour '''
-        cop.go_to_pose(pose=Pose(Point(*pos_upper), Quaternion(0.0,np.pi/2,0.,1000)))
+        cop.go_to_pose(Pose(position=Point(x=pos_upper[0],y=pos_upper[1],z=pos_upper[2]), orientation=Quaternion(x=0.0,y=np.pi/2,z=0.,w=1000.)))
         if bool(input("2/3, enter to continue, anystr else to abort!")): return False
         ''' Rotate/Pour back '''
-        cop.go_to_pose(Pose(Point(*pos_upper), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=pos_upper[0],y=pos_upper[1],z=pos_upper[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         if bool(input("3/3, enter to continue, anystr else to abort!")): return False
 
         return True
@@ -238,7 +238,7 @@ class RobotActions():
     def reset__not_general(sci, cop):
         sci.remove_objects_from_scene()
         cop.open_gripper()
-        cop.go_to_pose(Pose(Point(0.4,0.,0.4), Quaternion(0,1,0,0)))
+        cop.go_to_pose(Pose(position=Point(x=0.4,y=0.,z=0.4), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         cop.add_or_edit_object(name='Focus_target', pose=[0,0,0.0])
 
         return True

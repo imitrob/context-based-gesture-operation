@@ -1,48 +1,36 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(context_based_gesture_operation)
 
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  std_msgs
-  actionlib_msgs
-  geometry_msgs
-  sensor_msgs
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(moveit_msgs REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Gestures.msg"
+  "msg/Intent.msg"
+  "msg/Scene.msg"
+  "msg/SceneObject.msg"
+  "srv/G2I.srv"
+  DEPENDENCIES geometry_msgs std_msgs sensor_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
 )
 
-## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   SceneObject.msg
-   Scene.msg
-   Intent.msg
-   Gestures.msg
- )
+# Install Python package
+ament_python_install_package(context_based_gesture_operation)
 
-## Generate services in the 'srv' folder
-add_service_files (
-  FILES
-  G2I.srv
+# Install examples
+set(EXAMPLES_DIR context_based_gesture_operation)
+install(PROGRAMS
+    ${EXAMPLES_DIR}/srcmodules/BTreeLib.py
+    DESTINATION lib/${PROJECT_NAME}
 )
 
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+#ament_export_dependencies(rosidl_default_runtime)
 
-## Generate actions in the 'action' folder
-add_action_files(
- FILES
-)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  actionlib_msgs
-  sensor_msgs
-)
-
-## C++ libs & executables
-
-catkin_package(
-  CATKIN_DEPENDS message_runtime
-  )
+# Setup the project
+ament_package()

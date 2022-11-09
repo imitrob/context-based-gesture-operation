@@ -393,7 +393,7 @@ class Scene():
 
         rosobj.robot_eef_position = np.array(self.r.eef_position, dtype=float)
         rosobj.robot_gripper_opened = self.r.gripper_opened
-        rosobj.robot_eef_rotation = self.r.eef_rotation
+        rosobj.robot_eef_rotation = float(self.r.eef_rotation)
         rosobj.robot_attached_str = self.r.attached_str
         rosobj.robot_gripper_range = self.r.gripper_range
 
