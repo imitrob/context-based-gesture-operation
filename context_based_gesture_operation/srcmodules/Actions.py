@@ -195,6 +195,35 @@ class Actions():
         return True
 
     @staticmethod
+    def replace(s, o, p, ignore_location=False):
+        ''' High level task
+        '''
+        return False
+        raise NotImplementedError("not implemented feature for more objects")
+
+        if not isinstance(o, (list, tuple, np.ndarray)):
+            raise Exception("replace method gets only one object!")
+        if not (len(o) == 2):
+            raise Exception("replace method gets different number of objects!")
+
+        o1, o2 = o
+
+        if not o1.graspable: return False
+        if not o2.graspable: return False
+        if s.r.attached is not None: return False
+        if not o1.on_top: return False
+        if not o2.on_top: return False
+        if o1.inside_drawer: return False
+        if o2.inside_drawer: return False
+
+        if not ignore_location: return False # High level task
+
+        position, position_real = o1.position, o1.position_real
+        o1.position, o1.position_real = o2.position, o2.position_real
+        o2.position, o2.position_real = position, position_real
+        return True
+
+    @staticmethod
     def pour(s, o, p, ignore_location=False):
         common_sense_proba = 1.
         common_sense_proba *= o.pourable
@@ -273,7 +302,9 @@ class Actions():
                 if s.in_scene(new_position):
                     break
             i += 1
-            if i > 10000: raise Exception("Couldn't found new place where to push!")
+            if i > 10000:
+                return False
+                raise Exception("Couldn't found new place where to push!")
 
         if common_sense_proba < p: return False
         if not o.push_move(new_position): return False

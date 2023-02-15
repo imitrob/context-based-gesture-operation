@@ -1,6 +1,7 @@
 
 string name
 float64[3] position
+float64[3] position_real
 string type
 bool graspable
 bool pushable

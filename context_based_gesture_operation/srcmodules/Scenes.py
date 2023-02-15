@@ -1,6 +1,7 @@
 '''
 >>> import sys; sys.path.append('..')
 '''
+import sys
 import numpy as np
 import srcmodules.Objects as Objects
 import srcmodules.Robots as Robots
@@ -11,15 +12,20 @@ from copy import deepcopy
 
 class Scene():
 
-    def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=None, random=True, import_data=None):
+    def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=None, random=True, import_data=None, name="scene0"):
         self.r = Robots.Robot()
         if user is None:
-            user = np.random.randint(2)
+            if random:
+                user = np.random.randint(2)
+            else:
+                user = 0
         self.u = Users(user)
+
+        self.objects = []
         self.objects = objects
         self.grid_lens = grid_lens
+        self.name = name
         if init in ['no_task', '']:
-            self.objects = objects
             if self.has_duplicate_objects(): raise Exception("Init. objects with same name!")
 
         elif init == 'from_dict':
@@ -76,25 +82,32 @@ class Scene():
             else:
                 self.r.eef_position = eef_position
 
-    def scene_to_observation(self, type=1, focus_point=None, max_n_objects=7):
+    def scene_to_observation(self, type=1, focus_point=None, max_n_objects=7, real=True):
+        if real:
+            object_positions = self.object_positions_real
+            eef_position = self.eef_position_real
+        else:
+            object_positions = self.object_positions
+            eef_position = self.r.eef_position
+
         v1 = np.zeros([max_n_objects+1])
         v1[self.get_gripper_object_id()] = 1
 
         v2 = np.zeros([max_n_objects])
-        focf = SceneFieldFeatures.eeff__feature(self.object_positions, focus_point)
+        focf = SceneFieldFeatures.eeff__feature(object_positions, focus_point)
         v2[:len(focf)] = focf
 
         v3 = np.zeros([max_n_objects])
-        eeff = SceneFieldFeatures.eeff__feature(self.object_positions, self.r.eef_position)
+        eeff = SceneFieldFeatures.eeff__feature(object_positions, eef_position)
         v3[:len(eeff)] = eeff
 
         v2_diff = np.zeros([max_n_objects])
-        tmp_ = self.object_positions - focus_point
+        tmp_ = object_positions - focus_point
         tmp__ = np.sum(np.power(tmp_,2), axis=1)
         v2_diff[:len(tmp__)] = tmp__
 
         v3_diff = np.zeros([max_n_objects])
-        tmp_ = self.object_positions - self.r.eef_position
+        tmp_ = object_positions - eef_position
         tmp__ = np.sum(np.power(tmp_,2), axis=1)
         v3_diff[:len(tmp__)] = tmp__
 
@@ -117,7 +130,7 @@ class Scene():
         elif type == 1: # all info - just to try it out
             return self.experimental__get_obs()
         elif type == 2:
-            return SceneFieldFeatures.eeff__feature(self.object_positions, focus_point)
+            return SceneFieldFeatures.eeff__feature(object_positions, focus_point)
         elif type == 3:
             return [*v1, *v2]
         elif type == 4:
@@ -141,6 +154,7 @@ class Scene():
         else: raise Exception("Scene to observation - not the right type!")
 
     def scene_encode_to_state(self, TaTo=None):
+        ''' Experimental '''
         # State is one integer number trying to encode the whole scene state
         dims = [*self.grid_lens, len(self.O)+1, len(self.O)]
         n_states = np.prod(np.array(dims))
@@ -168,9 +182,12 @@ class Scene():
             s += str(o)
             s += '\n'
         s += str(self.r)
+        s += '\n'
+        s += str(self.u)
         return s
 
     def experimental__get_obs(self):
+        raise NotImplementedError("Revision needed!")
         o = []
         o.extend(list(self.r.eef_position))
         o.append(self.r.eef_rotation)
@@ -179,10 +196,11 @@ class Scene():
             o.extend(list(obj.experimental__get_obs()))
         return np.array(o).flatten()
 
-    def experimental__get_obs2(self):
+    def experimental__get_obs2(self, object_positions, eef_position):
+        raise NotImplementedError("Revision needed!")
         o = []
-        SceneFieldFeatures.eeff__feature(self.object_positions, self.r.eef_position)
-        SceneFieldFeatures.feaf__feature(object_sizes, gripper_range)
+        o.extend(SceneFieldFeatures.eeff__feature(object_positions, eef_position))
+        o.extend(SceneFieldFeatures.feaf__feature(self.object_sizes, self.r.gripper_range))
         return np.array(o).flatten()
 
     def get_gripper_object_id(self):
@@ -295,6 +313,38 @@ class Scene():
     def object_positions(self):
         return [obj.position for obj in self.objects]
 
+    @property
+    def object_positions_real(self):
+        return [obj.position_real for obj in self.objects]
+
+    @property
+    def object_sizes(self):
+        return [obj.size for obj in self.objects]
+
+    @property
+    def object_types(self):
+        return [obj.type for obj in self.objects]
+
+    @property
+    def object_poses(self):
+        return [[*obj.position, *obj.quaternion] for obj in self.objects]
+
+    @property
+    def object_names(self):
+        return [obj.name for obj in self.objects]
+
+    def get_object_by_type(self, type):
+        for obj in self.objects:
+            if obj.type == type:
+                return obj
+        return None
+
+    def get_object_by_name(self, name):
+        for obj in self.objects:
+            if obj.name == name:
+                return obj
+        return None
+
     def collision_free(self):
         for object1 in self.objects:
             for object2 in self.objects:
@@ -325,6 +375,19 @@ class Scene():
 
     def __getattr__(self, attr):
         return self.objects[self.O.index(attr)]
+
+    def get_closest_object(self, goal_pose):
+        if isinstance(goal_pose, (list,tuple,np.ndarray)):
+            pass
+        else:
+            goal_pose = [goal_pose.position.x, goal_pose.position.y, goal_pose.position.z]
+        mindist, mindistid = np.inf, None
+        for n,obj in enumerate(self.objects):
+            dist = np.linalg.norm(obj.position_real - goal_pose)
+            if dist < mindist:
+                mindist = dist
+                mindistid = n
+        return mindistid
 
     def generate_scene_state(self, A, G, U, selected_id):
         scene_state = self.to_dict()
@@ -374,6 +437,7 @@ class Scene():
             rosobj.objects[n].name = o.name
 
             rosobj.objects[n].position = np.array(o.position, dtype=float)
+            rosobj.objects[n].position_real = np.array(o.position_real, dtype=float)
             rosobj.objects[n].type = o.type
             rosobj.objects[n].graspable = o.graspable
             rosobj.objects[n].pushable = o.pushable
@@ -391,6 +455,7 @@ class Scene():
             if o.type == 'cup':
                 rosobj.objects[n].full = o.full
 
+        rosobj.robot_eef_position_real = np.array(self.r.eef_position_real, dtype=float)
         rosobj.robot_eef_position = np.array(self.r.eef_position, dtype=float)
         rosobj.robot_gripper_opened = self.r.gripper_opened
         rosobj.robot_eef_rotation = float(self.r.eef_rotation)
@@ -468,6 +533,7 @@ class Scene():
             object_names.append(name)
 
             self.objects.append(getattr(Objects, objects[n].type.capitalize())(name=name, position=objects[n].position))
+            self.objects[n].position_real = objects[n].position_real
             self.objects[n].type = objects[n].type
             self.objects[n].graspable = objects[n].graspable
             self.objects[n].pushable = objects[n].pushable
@@ -499,6 +565,7 @@ class Scene():
                             break
 
         self.r = Robots.Robot()
+        self.r.eef_position_real = scene_state.robot_eef_position_real
         self.r.eef_position = scene_state.robot_eef_position
         self.r.gripper_opened = scene_state.robot_gripper_opened
         self.r.eef_rotation = scene_state.robot_eef_rotation
@@ -571,18 +638,71 @@ class Scene():
 
         return [Actions.A_move[i] for i in move_sequence]
 
-    def position_real(self, position, scene_lens=[4,4,4], max_scene_len=0.8):
-        ''' Duplicite function in object.py
+    def are_objects_separated(self):
+        ''' Object positions are always update from real/sim
+            - Checks if objects are in boundaries which corresponds to brackets
         '''
-        scene_lens = np.array(scene_lens)
+        for object in self.objects:
+            if not np.allclose(object.position_real, object.make_position_real(), atol=2e-1):
+                return False
+        return True
 
-        one_tile_lens = max_scene_len/scene_lens
-        y_translation = (scene_lens[1]-1)*one_tile_lens[1]/2
+    def position_real(self, position, max_scene_len=0.8):
+        ''' Duplicite function in object.py
+        (grid)position -> real_position
+        '''
+        grid_lens = np.array(self.grid_lens)
+
+        one_tile_lens = max_scene_len/grid_lens
+        y_translation = (grid_lens[1]-1)*one_tile_lens[1]/2
 
         position_scaled = position * one_tile_lens
         position_translated = position_scaled - [-0.2, y_translation, 0.]
 
         return position_translated
+
+    def generate_grid(self):
+        assert np.allclose(*self.grid_lens), "Not Implemented for different scene lens"
+        xs, ys, zs = [], [], []
+        for i in range(self.grid_lens[0]):
+            x,y,z = self.position_real(position=[i,i,i])
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+        return np.array(xs), np.array(ys), np.array(zs)
+
+    def pos_real_to_grid(self, p, out=""):
+        '''
+        real_position -> (grid)position
+        '''
+        xs,ys,zs = self.generate_grid()
+        x,y,z = p
+
+        x_ = np.argmin(abs(xs-x))
+        y_ = np.argmin(abs(ys-y))
+        z_ = np.argmin(abs(zs-z))
+
+        close = np.allclose(p, self.position_real(position=(x_,y_,z_)), atol=2e-2)
+
+        if out == "with close": # bool close to grid
+            return np.array([x_,y_,z_]), close
+        return np.array([x_,y_,z_])
+
+    @property
+    def eef_position_real(self):
+        return self.position_real(position = self.r.eef_position)
+
+    def check_semantic_feasibility(self, target_action, target_object, ignore_location=True):
+        possible_actions = Actions.get_possible_actions(self, ignore_location=ignore_location)
+
+        possible_actions_for_target_object = [(a) for a in possible_actions if a[1]==target_object]
+
+        #print(f"=== {target_action}, {a[0]}, {possible_actions_for_target_object}")
+
+        if [(a) for a in possible_actions_for_target_object if a[0]==target_action] == []:
+            return False
+        else:
+            return True
 
 class SceneCoppeliaInterface():
     def __init__(self, interface_handle=None, print_info=False):
@@ -653,14 +773,32 @@ class SceneCoppeliaInterface():
 
 
 if __name__ == '__main__':
+    test_scenes()
+
+def test_scenes():
+
+
     drawer1 = Objects.Drawer(name='drawer1', position=[0,0,0])
     drawer2 = Objects.Drawer(name='drawer2', position=[2,0,0])
     cup1 = Objects.Cup(name='cup1', position=[2,0,0])
-    drawer2.open()
-    drawer2.contains
+    assert drawer2.open()
+    drawer1.info
+    drawer2.info
+    assert drawer2.contains
     drawer2.put_in(cup1)
+    drawer2.info
+
 
     scene = Scene(objects=[drawer1, drawer2, cup1])
+    scene.info
+
+    scene.pos_real_to_grid([0.6,0.3,0.43])
+    scene.are_objects_separated()
+    grid = scene.generate_grid()
+
+    grid
+    np.argmin(grid[1] - (-0.1))
+
     scene.O
     scene.collision_free()
 
