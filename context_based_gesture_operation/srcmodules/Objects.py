@@ -5,7 +5,14 @@ import numpy as np
 from numpy import array as a
 
 class Object():
-    ''' static attributes '''
+    ''' Static attributes
+
+    Solution: Grid x Real position
+    - [ ] Saved only real position, grid position is calculated based on real
+        - [ ] ROS update
+    - [ ] There is 'position_real' and 'position_grid', 'position' don't exists
+    - [ ]
+    '''
     all_types = ['object', 'cup', 'drawer']
 
     def __init__(self, name, # String
@@ -24,13 +31,15 @@ class Object():
                        inertia_transformation = None, # Optional
                        position_real = None,
                        ):
+
         self.name = name
         self.size = size
         if isinstance(self.size, (tuple,np.ndarray,list)):
             self.size = size[0]
         assert ((position is not None) or (position_real is not None)), "Position is required"
+
         if position is not None:
-            self.position = np.array(position)
+            self.position_real = self.pos_grid_to_real(position)
         else:
             self.position_real = position_real
 
@@ -51,7 +60,6 @@ class Object():
 
         self.quaternion = orientation
 
-
         self.ycb = ycb
 
         ''' Additional '''
@@ -62,11 +70,22 @@ class Object():
         self.inertia = inertia
         self.inertia_transformation = inertia_transformation
 
-        ''' Generate remaining variables '''
-        if position is not None:
-            self.position_real = self.make_position_real(random=random)
-        else:
-            self.position = self.pos_real_to_grid(position_real)
+    @property
+    def position(self):
+        ''' Default option is '''
+        return self.position_grid
+
+    @position.setter
+    def position(self, position_grid):
+        self.position_real = self.pos_grid_to_real(position_grid)
+
+    @property
+    def position_grid(self):
+        return self.pos_real_to_grid(self.position_real)
+
+    @position_grid.setter
+    def position_grid(self, position_grid):
+        self.position_real = self.pos_grid_to_real(position_grid)
 
     @property
     def orientation(self):
@@ -141,7 +160,7 @@ class Object():
         print(self.__str__())
 
     def __str__(self):
-        return f'{self.name},\t{self.type},\t{self.position},\t{self.print_structure(out_oneline_str=True)}'
+        return f'{self.name},\t{self.type},\t{np.array(self.position_real).round(2)},\t{self.print_structure(out_oneline_str=True)}'
 
     def __eq__(self, obj2):
         ''' Returns True if collision
@@ -150,6 +169,8 @@ class Object():
         '''
         obj1_positions = [self.position]
         obj2_positions = [obj2.position]
+        # Object collision box expansion based on object type
+        # 1. Drawer is expanded by 1. grid point based on when its open
         if self.type == 'drawer' and self.opened:
             obj1_positions.append(self.position + self.direction)
         if obj2.type == 'drawer' and obj2.opened:
@@ -158,7 +179,8 @@ class Object():
         for obj1_position in obj1_positions:
             for obj2_position in obj2_positions:
                 if np.array_equal(obj1_position, obj2_position):
-                    # check option if object inside drawer
+                    # Collision exceptions:
+                    # 1. Object inside drawer
                     if not self.is_obj_inside_drawer(obj2):
                         return True
 
@@ -306,7 +328,7 @@ class Object():
 
         return position_translated
 
-    def make_position_real_using_position(self, position, max_scene_len=0.8, grid_lens=[4,4,4]):
+    def pos_grid_to_real(self, position, max_scene_len=0.8, grid_lens=[4,4,4]):
         ''' Duplicite function in object.py
         '''
         grid_lens = np.array(grid_lens)
@@ -323,7 +345,7 @@ class Object():
         assert np.allclose(*grid_lens), "Not Implemented for different scene lens"
         xs, ys, zs = [], [], []
         for i in range(grid_lens[0]):
-            x,y,z = self.make_position_real_using_position(position=[i,i,i])
+            x,y,z = self.pos_grid_to_real(position=[i,i,i])
             xs.append(x)
             ys.append(y)
             zs.append(z)
@@ -337,7 +359,7 @@ class Object():
         y_ = np.argmin(abs(ys-y))
         z_ = np.argmin(abs(zs-z))
 
-        close = np.allclose(p, self.make_position_real_using_position(position=(x_,y_,z_)), atol=2e-2)
+        close = np.allclose(p, self.pos_grid_to_real(position=(x_,y_,z_)), atol=2e-2)
 
         if out == 'with close':
             return np.array([x_,y_,z_]), close
@@ -345,31 +367,34 @@ class Object():
 
 
 class Drawer(Object):
-    def __init__(self, name="?", position=None, opened=False, random=True, *args, **kwargs):
-        super().__init__(name, position, *args, **kwargs)
-        if opened:
-            self.opened_amount = 0.0
-        else:
-            self.opened_amount = 1.0
-        
+    def __init__(self, opened=False, random=True, *args, **kwargs):
+        super().__init__(random=random, *args, **kwargs)
 
-
-        self.opened = opened
         if random:
-            self.opened = bool(np.random.randint(2))
+            opened = np.random.random()
+        if isinstance(opened, bool):
+            self.opened_ = float(opened)
+        elif isinstance(opened, (float, int)):
+            self.opened_ = float(opened)
+        else: raise Exception(f"opened parameter not correct type: {opened}")
+
         self.contains = []
         self.type = 'drawer'
         self.max_allowed_size = 0.15
         self.stackable = True
         self.graspable = False
         self.pushable = False
-        self.pourable = 0.2
+        self.pourable = 0.9
         ## experimental
         self.open_close_count = 0
 
     @property
     def opened(self):
-        return round(self.opened_amount)
+        return round(self.opened_)
+
+    @opened.setter
+    def opened(self, value):
+        self.opened_ = float(value)
 
     def get_unique_state(self):
         ''' Unique state of the drawer is if it opened or closed '''
@@ -382,7 +407,7 @@ class Drawer(Object):
         return False # drawer cannot be stacked
 
     def __str__(self):
-        return f'{self.name},\t{self.type},\t{self.position}, {self.opened_str}, cont: {[c.name for c in self.contains]},\t{self.print_structure(out_oneline_str=True)}'
+        return f'{self.name},\t{self.type},\t{self.position_real.round(2)}, {self.opened_str}, cont: {[c.name for c in self.contains]},\t{self.print_structure(out_oneline_str=True)}'
 
     @property
     def contains_list(self):
@@ -390,8 +415,12 @@ class Drawer(Object):
 
     @property
     def opened_str(self):
-        ### TODO: not general !!! semi opened == opened now
-        return 'semi-opened' if self.opened else 'closed'
+        if self.opened_ < 0.2:
+            return 'closed'
+        elif self.opened_ < 0.8:
+            return 'semi-opened'
+        else:
+            return 'opened'
 
     def open(self):
         self.open_close_count += 1
@@ -469,19 +498,14 @@ class Cup(Object):
         return
 
     def __str__(self):
-        return f'{self.name},\t{self.type},\t{self.position}, {self.full_str},\t{self.print_structure(out_oneline_str=True)}'
+        return f'{self.name},\t{self.type},\t{self.position_real.round(2)}, {self.full_str},\t{self.print_structure(out_oneline_str=True)}'
 
     @property
     def full_str(self):
         return 'full' if self.full else 'empty'
 
     def fill(self):
-        full_before = self.full
         self.full = True
-        if not full_before:
-            return True
-        else:
-            return False
 
     def empty(self):
         full_before = self.full

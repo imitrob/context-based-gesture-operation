@@ -30,7 +30,7 @@ except:
 
 # TMP
 import sys, os; sys.path.append(f"/home/petr/ros2_ws/src/teleop_gesture_toolbox/teleop_gesture_toolbox")
-sys.path.append(f"/home/petr/ros2_ws/src/teleop_gesture_toolbox/teleop_gesture_toolbox/leapmotion")
+sys.path.append(f"/home/petr/ros2_ws/src/teleop_gesture_toolbox/teleop_gesture_toolbox/hand_processing")
 import gesture_classification.gestures_lib as gl; gl.init(silent=True)
 
 '''
@@ -40,7 +40,7 @@ import gesture_classification.gestures_lib as gl; gl.init(silent=True)
 '''
 
 class G2IRosNode(Node):
-    def __init__(self, init_node=False, inference_type='NN', load_model='M3v8_D4_1.pkl', ignore_unfeasible=False):
+    def __init__(self, init_node=False, inference_type='NN', load_model='M3v10_D6.pkl', ignore_unfeasible=False):
         super().__init__("G2IServiceNode")
         self.create_service(G2I, '/g2i', self.G2I_service_callback)
 
@@ -252,16 +252,29 @@ class PyMC3_Sample():
 class OneToOne_Sample():
     def __init__(self):
         # consturct the transition matrix
+        '''
+        "# gestures:                  up,left,down,rght,grab,point,two,thre,four,five,thumbsup\n",
+        "CM6[0, 0,2,:,:] = np.array([[ 1,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0], # move_up\n",
+        "                            [ 0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   0], # move_left\n",
+        "                            [ 0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   0], # move_down\n",
+        "                            [ 0,   0,   0,   1,   0,   0,   0,   0,   0,   0,   0], # move_right\n",
+        "                            [ 0,   0,   0,   0,   1,   0,   0,   0,   0,   0,   0], # pick_up\n",
+        "                            [ 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   1], # put\n",
+        "                            [ 0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0], # place\n",
+        "                            [ 0,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0], # pour\n",
+        "                            [ 0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0], # push\n",
+        "                            [ 0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0]])# replace\n",
+        '''
         self.T =    np.array([[ 1,  .0, .0,  .0,  0, .0,   .0,  .0,  .0], #, .0, .0], # move_up
                               [.0,   1, .0,  .0, .0, .0,    0,   0,  .0], #, .0, .0], # move_left
-                              [.0,  .0,  1,  .0,  0, .0,   .0,   0,  .0], #, .0, .0], # move_down
+                              [.0,  .0,  0,  .0,  0, .0,   .0,   0,  .0], #, .0, .0], # move_down
                               [.0,  .0, .0,   1,  0, .0,   .0,  .0,  .0], #, .0, .0], # move_right
                               [.0,  .0, .0,  .0,  1, .0,   .0,  .0,  .0], #, .0, .0], # put
                               [.0,  .0, .0,  .0, .0, .0,   .0,  .0,  .0], #,  1, .0], # put_on
                               [.0,  .0, .0,  .0, .0, .0,    0,   1,  .0], #, .0, .0], # pour
                               [ 0,  .0, .0,  .0, .0,  1,    0,  .0,  .0], #, .0, .0], # pick_up
-                              [.0,  .0, .0,  .0, .0, .0,    1,  .0,  .0], #, .0, .0], # place
-                              [.0,  .0, .0,  .0, .0, .0,   .0,  .0,   1], #, .0, .0], # open
+                              [.0,  .0,  1,  .0, .0, .0,    1,  .0,  .0], #, .0, .0], # place
+                              [.0,  .0, .0,  .0, .0, .0,   .0,  .0,   0], #, .0, .0], # open
                               [.0,  .0, .0,  .0, .0, .0,   .0,  .0,  .0]]) #, .0,  1]])# close
     def sample(self, data):
         return np.dot(self.T, data.data[0:9])

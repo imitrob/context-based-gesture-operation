@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+import sys, os
+path_from_ws = f'src/context_based_gesture_operation/context_based_gesture_operation/agent_nodes'
+ws_dir = "/".join(os.path.abspath(__file__).split('/')[:-5])
+path=f'/{ws_dir}/{path_from_ws}/'
+os.chdir(path)
+sys.path.append(path)
 import sys; sys.path.append("..")
 
 from context_based_gesture_operation.msg import Scene as SceneRos
@@ -37,4 +44,3 @@ if __name__ == "__main__":
     btree = BTreeNode()
 
     rclpy.spin(btree)
-    

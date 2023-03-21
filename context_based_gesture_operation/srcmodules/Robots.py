@@ -2,16 +2,31 @@
 import numpy as np
 
 class Robot():
-    def __init__(self, eef_position=np.array([0,0,3]), eef_rotation=0, gripper_opened=True, random=True):
-        self.eef_position = eef_position
+    def __init__(self, eef_position=np.array([0,0,3]), eef_rotation=np.array([0.,1.,0.,0.]), gripper_opened=True, random=True):
+        if isinstance(gripper_opened, bool):
+            self.gripper_opened_ = float(gripper_opened)
+
         self.gripper_opened = gripper_opened
         self.eef_rotation = eef_rotation
         self.attached = None
 
         self.gripper_range = 0.14 # For Panda
 
-        self.eef_position_real = SceneUtilities.position_grid_to_real(self.eef_position)
+        self.eef_position_real = SceneUtilities.position_grid_to_real(eef_position)
 
+    @property
+    def eef_position(self):
+        return SceneUtilities.position_real_to_grid(self.eef_position_real)
+    @eef_position.setter
+    def eef_position(self, eef_position_grid):
+        self.eef_position_real = SceneUtilities.position_grid_to_real(eef_position_grid)
+
+    @property
+    def gripper_opened(self):
+        return bool(round(self.gripper_opened_))
+    @gripper_opened.setter
+    def gripper_opened(self, gripper_opened):
+        self.gripper_opened_ = float(gripper_opened)
     @property
     def gripper_opened_str(self):
         return 'opened' if self.gripper_opened else 'closed'
@@ -21,12 +36,13 @@ class Robot():
         return self.attached.name if self.attached else '-'
 
     def __str__(self):
-        return f"Robot: {self.eef_position}, {self.gripper_opened_str}, rotation: {self.eef_rotation}, attached: {self.attached_str}"
+        return f"Robot: {self.eef_position_real}, {self.gripper_opened_str}, rotation: {self.eef_rotation}, attached: {self.attached_str}"
 
 
 
-
-
+'''
+Duplicated class
+'''
 class SceneUtilities():
     @staticmethod
     def position_grid_to_real(position, grid_lens=[4,4,4], max_scene_len=0.8):
@@ -71,3 +87,41 @@ class SceneUtilities():
         if out == "with close": # bool close to grid
             return np.array([x_,y_,z_]), close
         return np.array([x_,y_,z_])
+
+
+if __name__ == '__main__':
+    test_robots()
+
+def test_robots():
+    r = Robot(random=False)
+
+    assert np.allclose(r.eef_position, np.array([0, 0, 3]))
+    assert np.allclose(r.eef_position_real, np.array([ 0.2, -0.3,  0.6]))
+
+    r.eef_position = np.array([0,0,2])
+
+    assert np.allclose(r.eef_position, np.array([0, 0, 2]))
+    assert np.allclose(r.eef_position_real, np.array([ 0.2, -0.3,  0.4]))
+
+    r.eef_position_real = np.array([ 0.2, -0.1,  0.4])
+
+    assert np.allclose(r.eef_position_real, np.array([ 0.2, -0.1,  0.4]))
+    assert np.allclose(r.eef_position, np.array([0, 1, 2]))
+
+    r.gripper_opened = 0.2
+
+    assert r.gripper_opened == False
+    assert r.gripper_opened_ == 0.2
+    assert r.gripper_opened_str == 'closed'
+
+    r.gripper_opened = 0.6
+
+    assert r.gripper_opened == True
+    assert r.gripper_opened_ == 0.6
+    assert r.gripper_opened_str == 'opened'
+
+    r.gripper_opened = 1.0
+
+    assert r.gripper_opened == True
+    assert r.gripper_opened_ == 1.0
+    assert r.gripper_opened_str == 'opened'

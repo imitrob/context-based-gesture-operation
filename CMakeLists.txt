@@ -28,6 +28,7 @@ ament_python_install_package(context_based_gesture_operation)
 set(EXAMPLES_DIR context_based_gesture_operation)
 install(PROGRAMS
     ${EXAMPLES_DIR}/srcmodules/BTreeLib.py
+    ${EXAMPLES_DIR}/agent_nodes/btree.py
     DESTINATION lib/${PROJECT_NAME}
 )
 

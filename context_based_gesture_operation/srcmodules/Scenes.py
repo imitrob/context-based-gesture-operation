@@ -170,6 +170,10 @@ class Scene():
         return state
 
     @property
+    def n(self):
+        return len(self.O)
+
+    @property
     def info(self):
         print(self.__str__())
 
@@ -178,7 +182,8 @@ class Scene():
 
     def __str__(self):
         s = f"Scene info. shape: {self.grid_lens}\n"
-        for o in self.objects:
+        for n, o in enumerate(self.objects):
+            s += f'{n}. '
             s += str(o)
             s += '\n'
         s += str(self.r)
@@ -295,9 +300,9 @@ class Scene():
         elif constraint == 'z=3,x<4':
             p = np.hstack([np.random.choice(range(xlen-1)), np.random.choice(range(ylen)), 3])
         elif constraint == 'on_ground,x-cond':
-            p = np.hstack([x_position, np.random.choice(range(self.grid_lens[1])), 0])
+            p = np.hstack([x_position, np.random.choice(range(2))+2, 0])
         elif constraint == 'on_ground,x-cond,free':
-            p = np.hstack([x_position, np.random.choice(range(self.grid_lens[1])), 0])
+            p = np.hstack([x_position, np.random.choice(range(2))+2, 0])
             i = 0
             while not self.collision_free_position(p):
                 p = np.hstack([np.random.choice(range(xlen-1))+1, np.random.choice(range(self.grid_lens[1])), 0])
@@ -383,7 +388,7 @@ class Scene():
             goal_pose = [goal_pose.position.x, goal_pose.position.y, goal_pose.position.z]
         mindist, mindistid = np.inf, None
         for n,obj in enumerate(self.objects):
-            dist = np.linalg.norm(obj.position_real - goal_pose)
+            dist = np.linalg.norm(np.array(obj.position_real) - np.array(goal_pose))
             if dist < mindist:
                 mindist = dist
                 mindistid = n
@@ -432,11 +437,10 @@ class Scene():
     def to_ros(self, rosobj=None):
         if rosobj is None: raise Exception("to_ros() function needs Scene ROS object to be filled!")
         for n in range(7):
-            rosobj.objects[n].position = np.array([0,0,0], dtype=float)
+            rosobj.objects[n].position_real = np.array([0,0,0], dtype=float)
         for n,o in enumerate(self.objects):
             rosobj.objects[n].name = o.name
 
-            rosobj.objects[n].position = np.array(o.position, dtype=float)
             rosobj.objects[n].position_real = np.array(o.position_real, dtype=float)
             rosobj.objects[n].type = o.type
             rosobj.objects[n].graspable = o.graspable
@@ -447,18 +451,17 @@ class Scene():
             rosobj.objects[n].under_str = o.under_str
 
             if o.type == 'drawer':
-                rosobj.objects[n].opened = o.opened
+                rosobj.objects[n].opened = float(o.opened_)
                 if o.contains_list != []:
                     rosobj.objects[n].contains_list = o.contains_list[0]
                 else:
                     rosobj.objects[n].contains_list = ''
             if o.type == 'cup':
-                rosobj.objects[n].full = o.full
+                rosobj.objects[n].full = float(o.full)
 
         rosobj.robot_eef_position_real = np.array(self.r.eef_position_real, dtype=float)
-        rosobj.robot_eef_position = np.array(self.r.eef_position, dtype=float)
         rosobj.robot_gripper_opened = self.r.gripper_opened
-        rosobj.robot_eef_rotation = float(self.r.eef_rotation)
+        rosobj.robot_eef_rotation = 0.#np.array(self.r.eef_rotation, dtype=float)
         rosobj.robot_attached_str = self.r.attached_str
         rosobj.robot_gripper_range = self.r.gripper_range
 
@@ -467,6 +470,7 @@ class Scene():
 
     def copy(self):
         return Scene(init='from_dict', import_data=self.to_dict())
+
 
     def from_dict(self, scene_state):
         objects = scene_state['objects']
@@ -482,7 +486,8 @@ class Scene():
             if objects[name]['type'] == 'drawer':
                 self.objects[n].opened = objects[name]['opened']
             if objects[name]['type'] == 'cup':
-                self.objects[n].full = objects[name]['full']
+                if 'full' in objects[name].keys():
+                    self.objects[n].full = objects[name]['full']
 
         for n,name in enumerate(objects.keys()):
             if 'under_str' in objects[name].keys():
@@ -532,8 +537,7 @@ class Scene():
             name = objects[n].name
             object_names.append(name)
 
-            self.objects.append(getattr(Objects, objects[n].type.capitalize())(name=name, position=objects[n].position))
-            self.objects[n].position_real = objects[n].position_real
+            self.objects.append(getattr(Objects, objects[n].type.capitalize())(name=name, position_real=objects[n].position_real))
             self.objects[n].type = objects[n].type
             self.objects[n].graspable = objects[n].graspable
             self.objects[n].pushable = objects[n].pushable
@@ -566,7 +570,6 @@ class Scene():
 
         self.r = Robots.Robot()
         self.r.eef_position_real = scene_state.robot_eef_position_real
-        self.r.eef_position = scene_state.robot_eef_position
         self.r.gripper_opened = scene_state.robot_gripper_opened
         self.r.eef_rotation = scene_state.robot_eef_rotation
         self.r.attached = None
@@ -643,7 +646,7 @@ class Scene():
             - Checks if objects are in boundaries which corresponds to brackets
         '''
         for object in self.objects:
-            if not np.allclose(object.position_real, object.make_position_real(), atol=2e-1):
+            if not np.allclose(object.position_real, object.position_grid, atol=2e-1):
                 return False
         return True
 
@@ -705,6 +708,9 @@ class Scene():
             return True
 
 class SceneCoppeliaInterface():
+    '''
+    DEPRECATED
+    '''
     def __init__(self, interface_handle=None, print_info=False):
         '''
         Parameters:
@@ -719,9 +725,9 @@ class SceneCoppeliaInterface():
     def new_observation(self, s, object):
         oobj = getattr(s, object)
         if oobj.type == 'drawer':
-            focus_point = oobj.position_real() + np.random.random(3)/10 + np.array([-0.10,0,0.0])
+            focus_point = oobj.position_real + np.random.random(3)/10 + np.array([-0.10,0,0.0])
         else:
-            focus_point = oobj.position_real() + np.random.random(3)/10 + np.array([0,0,0.02])
+            focus_point = oobj.position_real + np.random.random(3)/10 + np.array([0,0,0.02])
 
         self.interface_handle.add_or_edit_object(name='Focus_target', pose=focus_point)
 
@@ -738,12 +744,12 @@ class SceneCoppeliaInterface():
         for o in s.objects:
             ''' simplified object creation '''
             if o.type == 'object':
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), shape="cube")
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real, shape="cube")
             elif o.type == 'cup':
-                self.interface_handle.add_or_edit_object(file="cup", name=o.name, frame_id='panda_link0', size=o.size*10, color=o.color, pose=o.position_real())
+                self.interface_handle.add_or_edit_object(file="cup", name=o.name, frame_id='panda_link0', size=o.size*10, color=o.color, pose=o.position_real)
             elif o.type == 'drawer':
                 if o.name == 'drawer2': raise Exception("TODO")
-                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real(), object_state=o.opened_str)
+                self.interface_handle.add_or_edit_object(name=o.name, frame_id='panda_link0', size=o.size, color=o.color, pose=o.position_real, object_state=o.opened_str)
             else: raise Exception(f"Object type {o.type} not in the list!")
 
         position_real = self.s.position_real(position=self.s.r.eef_position)
@@ -774,73 +780,150 @@ class SceneCoppeliaInterface():
 
 if __name__ == '__main__':
     test_scenes()
+    test_specific_scenarios()
+
+def test_specific_scenarios():
+    ''' Cheking semantics '''
+    from srcmodules.Actions import Actions
+    ''' Pour multiple cups into the bowl '''
+    o1 = Objects.Drawer(name='drawer1', position=[0,-1,0], random=False)
+    o2 = Objects.Cup(name='cup1', position=[0,0,0], random=False)
+    o3 = Objects.Cup(name='cup2', position=[0,1,0], random=False)
+    s = Scene(objects=[o1, o2, o3], random=False)
+
+    s.O
+    s.object_positions_real
+    s.object_sizes
+
+    Actions.do(s, ('pick_up', 'cup1'), ignore_location=True)
+    Actions.do(s, ('pour', 'drawer1'), ignore_location=True)
+    Actions.do(s, ('place', 'cup1'), ignore_location=True)
+
+    Actions.do(s, ('pick_up', 'cup2'), ignore_location=True)
+    Actions.do(s, ('pour', 'drawer1'), ignore_location=True)
+    Actions.do(s, ('place', 'cup2'), ignore_location=True)
+    s
+
+    ''' Stack three objects onto each other '''
+    s = Scene(init='object,object,object', random=False)
+    s
+    Actions.do(s, ('pick_up', 'object'), ignore_location=True)
+    Actions.do(s, ('put_on', 'object1'), ignore_location=True)
+    Actions.do(s, ('pick_up', 'object2'), ignore_location=True)
+    Actions.do(s, ('put_on', 'object'), ignore_location=True)
+    s
+    ''' Place Rotated Spam on Soup Can'''
+    s = Scene(init='object,object', random=False)
+    Actions.do(s, ('pick_up', 'object'), ignore_location=True)
+    Actions.do(s, ('rotate', 'object1'), ignore_location=True)
+
+    Actions.do(s, ('put_on', 'object1'), ignore_location=True)
+
+    ''' Place Cup and tomatos on the right, spam to the left '''
+    s = Scene(init='cup,cup,object', random=False)
+    s.r.eef_position = np.array([2,2,2])
+    Actions.do(s, ('pick_up', 'cup'), ignore_location=True)
+    Actions.do(s, ('move_up', ''), ignore_location=True)
+    Actions.do(s, ('move_right', ''), ignore_location=True)
+    Actions.do(s, ('place', 'cup'), ignore_location=True)
+
+    Actions.do(s, ('pick_up', 'object'), ignore_location=True)
+    Actions.do(s, ('move_up', ''), ignore_location=True)
+    Actions.do(s, ('move_left', ''), ignore_location=True)
+    Actions.do(s, ('place', 'object'), ignore_location=True)
+
+    Actions.do(s, ('pick_up', 'cup1'), ignore_location=True)
+    Actions.do(s, ('move_up', ''), ignore_location=True)
+    Actions.do(s, ('move_right', ''), ignore_location=True)
+    Actions.do(s, ('place', 'cup'), ignore_location=True)
+
+    ''' Clean up '''
+    s
+    s = Scene(init='drawer,object,object', random=False)
+    Actions.do(s, ('open', 'drawer'), ignore_location=True)
+    Actions.do(s, ('pick_up', 'object'), ignore_location=True)
+    Actions.do(s, ('put', 'drawer'), ignore_location=True)
+
+    Actions.do(s, ('pick_up', 'object1'), ignore_location=True)
+    Actions.do(s, ('put', 'drawer'), ignore_location=True)
+    s
+
+
+
 
 def test_scenes():
-
-
-    drawer1 = Objects.Drawer(name='drawer1', position=[0,0,0])
-    drawer2 = Objects.Drawer(name='drawer2', position=[2,0,0])
-    cup1 = Objects.Cup(name='cup1', position=[2,0,0])
+    drawer1 = Objects.Drawer(name='drawer1', position=[0,0,0], random=False)
+    drawer2 = Objects.Drawer(name='drawer2', position=[2,0,0], random=False)
+    drawer1.info
+    cup1 = Objects.Cup(name='cup1', position=[2,0,0], random=False)
     assert drawer2.open()
     drawer1.info
     drawer2.info
-    assert drawer2.contains
+    assert drawer2.contains == []
     drawer2.put_in(cup1)
+    assert drawer2.contains
     drawer2.info
-
 
     scene = Scene(objects=[drawer1, drawer2, cup1])
     scene.info
 
     scene.pos_real_to_grid([0.6,0.3,0.43])
-    scene.are_objects_separated()
+    assert scene.are_objects_separated()
     grid = scene.generate_grid()
 
-    grid
-    np.argmin(grid[1] - (-0.1))
 
-    scene.O
-    scene.collision_free()
+    assert scene.O == ['drawer1', 'drawer2', 'cup1']
+    assert scene.collision_free()
 
-    scene.objects[1].contains = ['cup1']
-    scene.collision_free()
+    scene.objects[1].contains = [scene.cup1]
+    assert scene.collision_free()
 
-    scene = Scene(init='drawer_and_cup')
+    scene = Scene(init='drawer,cup', random=False)
     scene.object_positions
-    scene.collision_free()
+    assert scene.collision_free()
 
-    objects = {
-        'drawer': {'position': np.array([3, 2, 0]),
-            'type': 'drawer',
-            'graspable': False,
-            'pushable': False,
-            'free': True,
-            'size': 0.2,
-            'opened': False,
-            'above_str': 'cup1'},
-        'cup1': {'position': np.array([3, 1, 0]),
-            'type': 'cup',
-            'graspable': True,
-            'pushable': True,
-            'free': True,
-            'size': 0.01,
-            'under_str': 'drawer',
-            'above_str': 'cup2'},
-        'cup2': {'position': np.array([1, 2, 0]),
-            'type': 'cup',
-            'graspable': True,
-            'pushable': True,
-            'free': True,
-            'size': 0.01,
-            'under_str': 'cup1'}
+    data = {
+        'objects': {
+            'drawer': {'position': np.array([3, 2, 0]),
+                'type': 'drawer',
+                'graspable': False,
+                'pushable': False,
+                'free': True,
+                'size': 0.2,
+                'opened': False,
+                'above_str': 'cup1'},
+            'cup1': {'position': np.array([3, 1, 0]),
+                'type': 'cup',
+                'graspable': True,
+                'pushable': True,
+                'free': True,
+                'size': 0.01,
+                'under_str': 'drawer',
+                'above_str': 'cup2'},
+            'cup2': {'position': np.array([1, 2, 0]),
+                'type': 'cup',
+                'graspable': True,
+                'pushable': True,
+                'free': True,
+                'size': 0.01,
+                'under_str': 'cup1'}
+            },
+        'robot': {
+            'eef_position': np.array([0,0,3]),
+            'gripper_opened': True,
+            'eef_rotation': 0,
+            'attached': "",
+            },
+        'user': 0,
         }
 
-    scene = Scene(objects=objects, init='from_dict')
-    scene.cup1.print_structure()
-    scene.cup2.print_structure()
-    scene.drawer.print_structure()
+    scene = Scene(init='from_dict', import_data=data)
+    assert scene.cup1.print_structure(out_oneline_str='str') == '|| drawer [cup1] cup2 >>'
+    assert scene.cup2.print_structure(out_oneline_str='str') == '|| drawer cup1 [cup2] >>'
+    assert scene.drawer.print_structure(out_oneline_str='str') == '|| [drawer] cup1 cup2 >>'
 
-    objects = {
+    data = {
+        'objects': {
         'drawer': {'position': np.array([3, 2, 0]),
             'type': 'drawer',
             'graspable': False,
@@ -865,14 +948,32 @@ def test_scenes():
             'free': True,
             'size': 0.01,
             'under_str': 'cup1'}
-        }
+            },
+        'robot': {
+            'eef_position': np.array([0,0,3]),
+            'gripper_opened': True,
+            'eef_rotation': 0,
+            'attached': "",
+            },
+        'user': 0,
+    }
 
-    scene = Scene(objects=objects, init='from_dict')
-    scene.cup1.print_structure()
-    scene.drawer.contains_list
+    scene = Scene(init='from_dict', import_data=data)
+    assert scene.cup1.print_structure(out_oneline_str='str') == '|| drawer [cup1] cup2 >>'
+    assert scene.drawer.contains_list == ['cup1', 'cup2']
     scene.drawer.contains
-    scene.collision_free()
+    assert scene.collision_free()
 
-    1
-    import numpy as np
-    np.histogram(np.array(np.round(np.random.normal(3.5, 1, 50)), dtype=int))
+
+    s = Scene(init='drawer,drawer')
+    ''' Must be between 0 and 1 '''
+    assert s.drawer.opened_ not in [0.0, 1.0]
+    assert s.drawer1.opened_ not in [0.0, 1.0]
+    ''' Must be 0 or 1 '''
+    assert s.drawer.opened in [0.0, 1.0]
+    assert s.drawer1.opened in [0.0, 1.0]
+
+    s
+    s.drawer.position_real
+    s.drawer1.position_real
+    s.objects[0].color

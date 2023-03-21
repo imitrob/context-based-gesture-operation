@@ -1,7 +1,6 @@
 
 context_based_gesture_operation/SceneObject[7] objects
 
-float64[3] robot_eef_position
 float64[3] robot_eef_position_real
 bool       robot_gripper_opened
 float64    robot_eef_rotation

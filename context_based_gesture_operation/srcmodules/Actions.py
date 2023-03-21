@@ -1,4 +1,16 @@
 ''' Conditioned by o
+
+Common usage: Action.do(s, (ta,to))
+- See function docs
+
+Actions applied on scene (Scene.py -> Scene()).
+Checks for semantic validity.
+
+Note: common_sense_proba variable is just experimental and not used now.
+It should represent action feasibility probability.
+E.g. object is graspable by 20% and pourable by 80%.
+Then the total probability is 0.2 * 0.8 = 0.16 -> 16%
+If probability is below some threshold, the action is considered not doable.
 '''
 import numpy as np
 import itertools
@@ -83,7 +95,7 @@ class Actions():
                     valid_actions.append((action,object))
 
     @staticmethod
-    def do(s, action, ignore_location=False, out=False, p=0.9, handle_location=False, fake_handle_location=False):
+    def do(s, action, ignore_location=True, out=False, p=0.9, handle_location=False, fake_handle_location=False):
         ''' Main method
         Parameters:
             s (Scene): Scene
@@ -132,6 +144,7 @@ class Actions():
 
         if common_sense_proba < p: return False
         s.r.attached.position = new_position
+        s.r.eef_position = new_position
         s.r.attached = None
         return True
 
@@ -164,7 +177,7 @@ class Actions():
     def put(s, o, p, ignore_location=False):
         common_sense_proba = 1.
 
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
         if not s.r.attached: return False
         if o.type == 'drawer':
             if not o.opened: return False
@@ -183,7 +196,7 @@ class Actions():
     def put_on(s, o, p, ignore_location=False):
         common_sense_proba = 1.
 
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
         if not s.r.attached: return False
         if o.type == 'cup':
             return False # cup is unstackable
@@ -217,10 +230,7 @@ class Actions():
         if o2.inside_drawer: return False
 
         if not ignore_location: return False # High level task
-
-        position, position_real = o1.position, o1.position_real
-        o1.position, o1.position_real = o2.position, o2.position_real
-        o2.position, o2.position_real = position, position_real
+        o1.position_real, o2.position_real = o2.position_real, o1.positon_real
         return True
 
     @staticmethod
@@ -228,14 +238,15 @@ class Actions():
         common_sense_proba = 1.
         common_sense_proba *= o.pourable
         if not s.r.attached: return False
-        if not s.r.attached.full: common_sense_proba *= 0.2
-        if o.full: common_sense_proba *= 0.2
+        #if not s.r.attached.full: common_sense_proba *= 0.2
+        #if o.full: common_sense_proba *= 0.2
 
         if common_sense_proba < p: return False
-        if not s.r.attached.empty(): return False
+        ''' TODO '''
+        #if not s.r.attached.empty(): return False
         if not o.fill(): return False
 
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
 
         return True
 
@@ -248,14 +259,11 @@ class Actions():
         if o.inside_drawer: return False
 
         if common_sense_proba < p: return False
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
-        if (o.direction == np.array([0,0,1])).all():
-            s.r.eef_direction = 0
-        else:
-            s.r.eef_direction = 1
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
 
         o.unstack()
         s.r.attached = o
+        s.r.eef_position_real = o.position_real
         return True
 
     @staticmethod
@@ -272,7 +280,7 @@ class Actions():
         '''
         common_sense_proba *= 1-o.open_close_count*0.01 if o.open_close_count<50 else 0.8
         if common_sense_proba < p: return False
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
 
         o.open()
         return True
@@ -285,7 +293,7 @@ class Actions():
 
         common_sense_proba *= 1-o.open_close_count*0.01 if o.open_close_count<50 else 0.8
         if common_sense_proba < p: return False
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
 
         o.close()
         return True
@@ -294,10 +302,10 @@ class Actions():
         common_sense_proba = 1.
         if not o.pushable: return False
 
-        if not ignore_location and sum(abs(s.r.eef_position - o.position)) > 1: return False
+        if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
         i = 0
         while True:
-            new_position = np.int64(o.position + np.hstack([np.random.choice(3, 2) - 1, 0]))
+            new_position = np.int64(o.position_real + np.hstack([np.random.choice(3, 2) - 1, 0]))
             if s.collision_free_position(new_position):
                 if s.in_scene(new_position):
                     break
@@ -348,13 +356,9 @@ class Actions():
             return False
     '''
     @staticmethod
-    def rotate(s, o=None, p=None):
-        if self.eef_rotation == 0:
-            self.eef_rotation = 1
-            if s.r.attached:
-                s.r.attached.direction = np.array([0,0,1])
-        else:
-            self.eef_rotation = 0
+    def rotate(s, o=None, p=None, ignore_location=False):
+        return True
+
     @staticmethod
     def _move_by_direction(s, direction):
         if s.in_scene(s.r.eef_position + direction):
@@ -382,3 +386,7 @@ class Actions():
             return True
         else:
             return False
+
+def actions_tester():
+    ''' in tests folder becaused of dependency on other libraries '''
+    pass
