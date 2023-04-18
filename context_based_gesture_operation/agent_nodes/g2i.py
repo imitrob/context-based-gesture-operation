@@ -107,8 +107,11 @@ class G2IRosNode(Node):
             return response
 
         ## focus point to target object
-        id_obj = np.argmin(np.linalg.norm(np.array(s.object_positions_real) - np.array(focus_point), axis=1))
-        name_obj = s.objects[id_obj].name
+        if s.object_positions_real != []:
+            id_obj = np.argmin(np.linalg.norm(np.array(s.object_positions_real) - np.array(focus_point), axis=1))
+            name_obj = s.objects[id_obj].name
+        else:
+            name_obj = None
         id_g = np.argmax(g)
 
         print(self.G, id_g)
@@ -135,12 +138,17 @@ class G2IRosNode(Node):
         Returns:
             (target_action, target_object) - (String, String) - Note: target_object is same as on input
         '''
-
-        focus_point = getattr(s, target_object).position_real
+        if target_object is not None:
+            focus_point = getattr(s, target_object).position_real
+        else:
+            focus_point = None
         return self.predict_with_scene_gesture_and_focus_point(s, gesture, focus_point, scene_def_id)
 
     def predict_with_scene_gesture_and_focus_point(self,s, gesture, focus_point, scene_def_id):
-        target_object = s.O[s.get_closest_object(focus_point)]
+        if focus_point is not None:
+            target_object = s.O[s.get_closest_object(focus_point)]
+        else:
+            target_object = None
 
         gestures = np.zeros((len(self.G)))
         gesture_id = self.G.index(gesture)

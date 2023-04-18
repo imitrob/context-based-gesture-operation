@@ -41,7 +41,7 @@ class Object():
         if position is not None:
             self.position_real = self.pos_grid_to_real(position)
         else:
-            self.position_real = position_real
+            self.position_real = np.array(position_real)
 
         self.direction = np.array([-1, 0, 0]) # default
         self.type = 'object'

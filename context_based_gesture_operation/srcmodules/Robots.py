@@ -2,9 +2,15 @@
 import numpy as np
 
 class Robot():
-    def __init__(self, eef_position=np.array([0,0,3]), eef_rotation=np.array([0.,1.,0.,0.]), gripper_opened=True, random=True):
+    '''
+    Properties:
+        eef_position (Int[3]), (Grid), read/set
+        eef_position_real (Float[3]), (Real), read/set
+        gripper_opened ()
+    '''
+    def __init__(self, eef_position=np.array([0,0,3]), eef_rotation=np.array([1.,0.,0.,0.]), gripper_opened=True, random=True):
         if isinstance(gripper_opened, bool):
-            self.gripper_opened_ = float(gripper_opened)
+            self.gripper = float(gripper_opened)
 
         self.gripper_opened = gripper_opened
         self.eef_rotation = eef_rotation
@@ -23,10 +29,10 @@ class Robot():
 
     @property
     def gripper_opened(self):
-        return bool(round(self.gripper_opened_))
+        return bool(round(self.gripper))
     @gripper_opened.setter
     def gripper_opened(self, gripper_opened):
-        self.gripper_opened_ = float(gripper_opened)
+        self.gripper = float(gripper_opened)
     @property
     def gripper_opened_str(self):
         return 'opened' if self.gripper_opened else 'closed'
@@ -36,7 +42,7 @@ class Robot():
         return self.attached.name if self.attached else '-'
 
     def __str__(self):
-        return f"Robot: {self.eef_position_real}, {self.gripper_opened_str}, rotation: {self.eef_rotation}, attached: {self.attached_str}"
+        return f"Robot: {np.array(self.eef_position_real).round(2)}, {self.gripper_opened_str}, rotation: {self.eef_rotation}, attached: {self.attached_str}"
 
 
 
@@ -111,17 +117,17 @@ def test_robots():
     r.gripper_opened = 0.2
 
     assert r.gripper_opened == False
-    assert r.gripper_opened_ == 0.2
+    assert r.gripper == 0.2
     assert r.gripper_opened_str == 'closed'
 
     r.gripper_opened = 0.6
 
     assert r.gripper_opened == True
-    assert r.gripper_opened_ == 0.6
+    assert r.gripper == 0.6
     assert r.gripper_opened_str == 'opened'
 
     r.gripper_opened = 1.0
 
     assert r.gripper_opened == True
-    assert r.gripper_opened_ == 1.0
+    assert r.gripper == 1.0
     assert r.gripper_opened_str == 'opened'

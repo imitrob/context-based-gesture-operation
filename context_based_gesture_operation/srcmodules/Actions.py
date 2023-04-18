@@ -110,7 +110,13 @@ class Actions():
         if isinstance(action, dict):
             action = (action['target_action'], action['target_object'])
 
-        o = getattr(s, action[1]) if action[1] else ""
+        if isinstance(action[1], str):
+            o = getattr(s, action[1])
+        elif action[1] is None:
+            o = None
+        else:
+            o = action[1]
+
         if not Actions.is_action_from_move_category(action[0]) and fake_handle_location:
             Actions.fake_move(s, o.position)
         if not Actions.is_action_from_move_category(action[0]) and handle_location:
@@ -154,7 +160,6 @@ class Actions():
             new_position = Actions.find_free_location_for_radius(s, center, r)
             if new_position is not None: return new_position
 
-        print(f"The object {o}")
         s.info
         raise Exception("Couldn't found new place where to push!")
 
@@ -175,6 +180,7 @@ class Actions():
 
     @staticmethod
     def put(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
 
         if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
@@ -194,6 +200,7 @@ class Actions():
 
     @staticmethod
     def put_on(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
 
         if not ignore_location and sum(abs(s.r.eef_position_real - o.position_real)) > 1: return False
@@ -209,6 +216,7 @@ class Actions():
 
     @staticmethod
     def replace(s, o, p, ignore_location=False):
+        if o is None: return False
         ''' High level task
         '''
         return False
@@ -235,6 +243,7 @@ class Actions():
 
     @staticmethod
     def pour(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
         common_sense_proba *= o.pourable
         if not s.r.attached: return False
@@ -252,6 +261,7 @@ class Actions():
 
     @staticmethod
     def pick_up(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
         if not o.graspable: return False
         if s.r.attached is not None: return False
@@ -268,6 +278,7 @@ class Actions():
 
     @staticmethod
     def open(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
         if o.type != 'drawer': return False
         if o.opened: common_sense_proba *= 0.2
@@ -287,6 +298,7 @@ class Actions():
 
     @staticmethod
     def close(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
         if o.type != 'drawer': return False
         if not o.opened: common_sense_proba *= 0.2
@@ -299,6 +311,7 @@ class Actions():
         return True
     @staticmethod
     def push(s, o, p, ignore_location=False):
+        if o is None: return False
         common_sense_proba = 1.
         if not o.pushable: return False
 

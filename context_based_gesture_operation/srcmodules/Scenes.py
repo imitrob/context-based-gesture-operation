@@ -776,12 +776,6 @@ class SceneCoppeliaInterface():
         self.interface_handle.go_to_pose(position_real)
         input("Object removed on the scene? Press enter")
 
-
-
-if __name__ == '__main__':
-    test_scenes()
-    test_specific_scenarios()
-
 def test_specific_scenarios():
     ''' Cheking semantics '''
     from srcmodules.Actions import Actions
@@ -977,3 +971,7 @@ def test_scenes():
     s.drawer.position_real
     s.drawer1.position_real
     s.objects[0].color
+
+if __name__ == '__main__':
+    test_scenes()
+    test_specific_scenarios()
