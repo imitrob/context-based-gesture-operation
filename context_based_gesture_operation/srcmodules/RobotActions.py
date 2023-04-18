@@ -40,8 +40,7 @@ class RobotActions():
 
     @staticmethod
     def move_in_dir(s, cop, object_name, direction):
-        block_position = s.r.eef_position# + np.array(direction)
-        pos = s.position_real(block_position)
+        pos = s.r.eef_position_real
 
         cop.go_to_pose(Pose(position=Point(x=pos[0],y=pos[1],z=pos[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
         RobotActions.wait()
@@ -69,7 +68,7 @@ class RobotActions():
 
     @staticmethod
     def pick_up(s, cop, object_name):
-        pos = getattr(s, object_name).position_real()
+        pos = getattr(s, object_name).position_real
         pos_upper = deepcopy(pos)
         pos_upper[2] += 0.1
 
@@ -86,14 +85,14 @@ class RobotActions():
 
     @staticmethod
     def put_on(s, cop, object_name):
-        pos = getattr(s, object_name).position_real()
+        pos = getattr(s, object_name).position_real
 
         def get_pose_of_action_put(pos):
             o = getattr(s, object_name)
             if o.type == 'drawer':
                 raise Exception("TODO")
             elif o.type == 'object':
-                ret = o.position_real()
+                ret = o.position_real
                 ret[2] += o.size
                 return ret
             else: raise Exception("put to wrong type of object")
@@ -115,7 +114,7 @@ class RobotActions():
 
     @staticmethod
     def put(s, cop, object_name):
-        position_handle = RobotActions.drawer_base_to_handle_position(getattr(s,object_name).position_real(), drawer_state=0.0)
+        position_handle = RobotActions.drawer_base_to_handle_position(getattr(s,object_name).position_real, drawer_state=0.0)
         pos_release = position_handle - np.array([0.05, 0.0, -0.05])
 
         o = getattr(s, object_name)
@@ -155,10 +154,10 @@ class RobotActions():
         ''' Parameters:
             v1 (Float): How much to open 1.0 - open to the full (20cm), 0.0 - not open at all (0cm)
         '''
-        position_handle = RobotActions.drawer_base_to_handle_position(getattr(s,object_name).position_real(), drawer_state=0.)
+        position_handle = RobotActions.drawer_base_to_handle_position(getattr(s,object_name).position_real, drawer_state=0.)
 
         position_opened = position_handle - np.array([0.2*v1, 0, 0])
-        cop.add_or_edit_object(name='drawer', pose=s.drawer.position_real(), object_state='slightly-opened')
+        cop.add_or_edit_object(name='drawer', pose=s.drawer.position_real, object_state='slightly-opened')
 
         position_withdrawn = position_opened - np.array([0.0,0,-0.1])
         cop.go_to_pose(pose=Pose(position=Point(x=position_withdrawn[0],y=position_withdrawn[1],z=position_withdrawn[2]), orientation=Quaternion(x=0.,y=1.,z=0.,w=0.)))
@@ -187,7 +186,7 @@ class RobotActions():
         '''
         # Initial drawer state
         drawer_state = 0.1
-        position_handle = RobotActions.drawer_base_to_handle_position(getattr(s,object_name).position_real(), drawer_state=drawer_state)
+        position_handle = RobotActions.drawer_base_to_handle_position(getattr(s,object_name).position_real, drawer_state=drawer_state)
 
         cop.open_gripper()
         if bool(input("1/5, enter to continue, anystr else to abort!")): return False
@@ -209,7 +208,7 @@ class RobotActions():
 
     @staticmethod
     def pour(s, cop, object_name, v1=1.0):
-        pos = getattr(s, object_name).position_real()
+        pos = getattr(s, object_name).position_real
         pos_upper = deepcopy(pos)
         pos_upper[2] += 0.1
 

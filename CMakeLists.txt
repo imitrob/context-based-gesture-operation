@@ -17,6 +17,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Scene.msg"
   "msg/SceneObject.msg"
   "srv/G2I.srv"
+  "srv/BTreeSingleCall.srv"
   DEPENDENCIES geometry_msgs std_msgs sensor_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
 )
 
@@ -27,6 +28,7 @@ ament_python_install_package(context_based_gesture_operation)
 set(EXAMPLES_DIR context_based_gesture_operation)
 install(PROGRAMS
     ${EXAMPLES_DIR}/srcmodules/BTreeLib.py
+    ${EXAMPLES_DIR}/agent_nodes/btree.py
     DESTINATION lib/${PROJECT_NAME}
 )
 

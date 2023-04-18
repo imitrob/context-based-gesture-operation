@@ -13,17 +13,17 @@ class Users():
         else: # u is string
             self.selected_id = Users.U.index(u)
 
+
     @property
     def name(self):
         return Users.U[self.selected_id]
 
     @property
     def selected(self):
-        return self._users[self.selected_id]
+        return self.U[self.selected_id]
 
-    def __getattr__(self, attr):
-        return self._users[attr]
-
+    def __str__(self):
+        return f"User id: {self.selected_id}"
 
 
 
