@@ -16,6 +16,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Intent.msg"
   "msg/Scene.msg"
   "msg/SceneObject.msg"
+  "msg/HRICommand.msg"
   "srv/G2I.srv"
   "srv/BTreeSingleCall.srv"
   DEPENDENCIES geometry_msgs std_msgs sensor_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg

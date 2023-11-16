@@ -305,33 +305,33 @@ def create_tree(rosnode):
     ''' BH tree final
     '''
     # LVL 0 - root
-    root = py_trees.composites.Sequence("root")
+    root = py_trees.composites.Sequence("root", memory=True)
     # LVL 1
     update_scene = UpdateScene(name="Scene2BB")
     update_gestures = UpdateGestures(name="Gestures2BB")
     generate_intent = GenerateIntent(name="GenIntent", rosnode=rosnode)
 
-    seq_lvl1 = py_trees.composites.Sequence("seq_lvl1")
+    seq_lvl1 = py_trees.composites.Sequence("seq_lvl1", memory=True)
     # LVL 2
-    to_is_drawer_q = py_trees.composites.Selector("to is drawer?")
-    holding_precondition_q = py_trees.composites.Selector("holding precond.?")
+    to_is_drawer_q = py_trees.composites.Selector("to is drawer?", memory=True)
+    holding_precondition_q = py_trees.composites.Selector("holding precond.?", memory=True)
     execute_ta = ExecuteTA("execute_ta")
     delete_intent = DeleteIntent("delete_intent")
     # LVL 3
     to_not_eq_drawer = TONotEqDrawer("to_not_eq_drawer")
-    drawer_precond_q = py_trees.composites.Selector("drawer precond.?")
+    drawer_precond_q = py_trees.composites.Selector("drawer precond.?", memory=True)
 
     holding_precondition = HoldingPrecondition('holding_precondition')
     pick_to = PickTO('pick_to')
 
     # LVL 4
     drawer_state_not_in_preconditions = DrawerStateNotInPrecondition('drawer_state_not_in_preconditions')
-    fix_drawer_precond = py_trees.composites.Sequence("fix_drawer_precond")
+    fix_drawer_precond = py_trees.composites.Sequence("fix_drawer_precond", memory=True)
     toggle_drawer = ToggleDrawer("toggle_drawer")
 
     # --- LVL 5 ----------------------------------------------
 
-    place_q = py_trees.composites.Selector("place first?")
+    place_q = py_trees.composites.Selector("place first?", memory=True)
 
     # --- LVL 6 ----------------------------------------------
     hand_empty = HandEmpty("hand_empty")

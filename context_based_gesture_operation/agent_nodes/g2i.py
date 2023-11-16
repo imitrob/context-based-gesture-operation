@@ -121,10 +121,11 @@ class G2IRosNode(Node):
         a, o = self.predict_with_scene_gesture_and_target_object(s, name_g, name_obj, scene_def_id=self.scene_def_id)
 
         #SceneFieldFeatures.eeff__feature(s.object_positions, np.array([0,0,0]))
-        nojb = np.argmax(SceneFieldFeatures.eeff__feature(s.object_positions_real,np.array(focus_point)))
+        #nojb = np.argmax(SceneFieldFeatures.eeff__feature(s.object_positions_real,np.array(focus_point)))
 
         response.intent.target_action = a
-        response.intent.target_object = s.O[id_obj]
+        if s.object_positions_real != []:
+            response.intent.target_object = s.O[id_obj]
         print(f"intent {response.intent.target_action}, {response.intent.target_object}")
 
         return response
@@ -141,11 +142,12 @@ class G2IRosNode(Node):
         if target_object is not None:
             focus_point = getattr(s, target_object).position_real
         else:
-            focus_point = None
+            focus_point = s.r.eef_position_real
         return self.predict_with_scene_gesture_and_focus_point(s, gesture, focus_point, scene_def_id)
 
     def predict_with_scene_gesture_and_focus_point(self,s, gesture, focus_point, scene_def_id):
-        if focus_point is not None:
+        print("scene objects: ", s.O, s.empty_scene)
+        if focus_point is not None and not s.empty_scene:
             target_object = s.O[s.get_closest_object(focus_point)]
         else:
             target_object = None
@@ -157,17 +159,19 @@ class G2IRosNode(Node):
         user_dep = True
         X = np.zeros([70])
 
-        obs = s.scene_to_observation(type=scene_def_id, focus_point=focus_point)
-
-
-        if not user_dep:
-            ll = len(gestures) + len(obs)
-            X[0:ll] = [*gestures, *obs]
-            print(f"v2")
+        if not s.empty_scene:
+            obs = s.scene_to_observation(type=scene_def_id, focus_point=focus_point)
+            if not user_dep:
+                ll = len(gestures) + len(obs)
+                X[0:ll] = [*gestures, *obs]
+                print(f"v2")
+            else:
+                ll = len(gestures) + 1 + len(obs)
+                X[0:ll] = [*gestures, s.u.selected_id, *obs]
+                print(f"v3")
         else:
-            ll = len(gestures) + 1 + len(obs)
-            X[0:ll] = [*gestures, s.u.selected_id, *obs]
-            print(f"v3")
+            print("!!! BIG WARNING -> EMPTY SCENE !!!")
+
         print(X)
         inference_probs = self.sampler.sample(X)[0]
 
@@ -273,6 +277,9 @@ class OneToOne_Sample():
         "                            [ 0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0], # push\n",
         "                            [ 0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0]])# replace\n",
         '''
+        # Swipe up -> move_up, Swipe left - move_left, Swipe down -> Place, Swipe right -> move_right, Grab -> put, Point -> pick_up, Two, Three -> Pour, Four -> place, Five, Thumbs-up
+        
+
         self.T =    np.array([[ 1,  .0, .0,  .0,  0, .0,   .0,  .0,  .0], #, .0, .0], # move_up
                               [.0,   1, .0,  .0, .0, .0,    0,   0,  .0], #, .0, .0], # move_left
                               [.0,  .0,  0,  .0,  0, .0,   .0,   0,  .0], #, .0, .0], # move_down

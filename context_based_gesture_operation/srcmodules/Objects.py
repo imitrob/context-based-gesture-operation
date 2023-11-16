@@ -43,7 +43,6 @@ class Object():
         else:
             self.position_real = np.array(position_real)
 
-        self.direction = np.array([-1, 0, 0]) # default
         self.type = 'object'
         self.inside_drawer = False
         self.under = None # object
@@ -69,6 +68,10 @@ class Object():
         self.friction = friction
         self.inertia = inertia
         self.inertia_transformation = inertia_transformation
+
+    @property
+    def direction(self):
+        raise Exception("TODO")
 
     @property
     def position(self):
@@ -128,23 +131,23 @@ class Object():
     def random_capacity(self):
         return np.random.choice(['', 'stacked'])
 
-    def gripper_rotate(self, direction):
-        if not self.graspable: return False
-        self.rotation = direction
-        return True
+    def gripper_rotate(self, quaternion):
+        if not self.graspable: return False, f'{self.type} is not graspable'
+        self.quaternion = quaternion
+        return True, ''
 
     def gripper_move(self, position):
-        if sum(abs(self.position - position)) > 1: return False
-        if not self.graspable: return False
+        if sum(abs(self.position - position)) > 1: return False, 'move is longer than 1 (this condition may be removed)'
+        if not self.graspable: return False, 'object is not graspable'
         self.position = position
-        return True
+        return True, ''
 
     def push_move(self, position):
-        if sum(abs(self.position - position)) > 1: return False
-        if position[2] != 0: return False
-        if not self.pushable: return False
+        if sum(abs(self.position - position)) > 1: return False, 'move is longer than 1 (this condition may be removed)'
+        if position[2] != 0: return False, 'Push cannot move in z axis'
+        if not self.pushable: return False, f'{self.type} not pushable'
         self.position = position
-        return True
+        return True, ''
 
     @property
     def on_top(self):
@@ -171,11 +174,12 @@ class Object():
         obj2_positions = [obj2.position]
         # Object collision box expansion based on object type
         # 1. Drawer is expanded by 1. grid point based on when its open
+        '''
         if self.type == 'drawer' and self.opened:
             obj1_positions.append(self.position + self.direction)
         if obj2.type == 'drawer' and obj2.opened:
             obj2_positions.append(obj2.position + obj2.direction)
-
+        '''
         for obj1_position in obj1_positions:
             for obj2_position in obj2_positions:
                 if np.array_equal(obj1_position, obj2_position):
@@ -199,43 +203,34 @@ class Object():
         if object_under: object_under.above = self
         return True
     '''
-    def stack(self, object_attached=None, debug=False):
+    def stack(self, object_attached=None):
         if object_attached is None:
-            if debug: print("no object written")
-            return False
+            return False, 'no object specified'
         if object_attached.above is not None:
-            if debug: print("target object is not on top")
-            return False
+            return False, 'target object is not on top'
         if not self.free:
-            if debug: print("object is not free")
-            return False
+            return False, 'object is not free'
         if not self.stackable:
-            if debug: print("object is not stackable")
-            return False
+            return False, 'object is not stackable'
         if self.inside_drawer:
-            if debug: print("object is inside drawer")
-            return False
+            return False, 'object is inside drawer'
         if self is object_attached:
-            if debug: print("object is attached")
-            return False
+            return False, 'object is attached'
         # current object name of object under
         self.above = object_attached
         if object_attached: object_attached.under = self
-        return True
+        return True, ''
 
     def unstack(self, debug=False):
         if self.above is not None:
-            if debug: print("something is above the object")
-            return False
+            return False, 'something is above the object'
         if self.inside_drawer:
-            if debug: print("object is in the drawer")
-            return False
+            return False, 'object is in the drawer'
         if not self.under:
-            if debug: print("object is not stacked")
-            return False
+            return False, 'object is not stacked'
         self.under.above = None
         self.under = None
-        return True
+        return True, ''
 
     @property
     def above_str(self):
@@ -404,7 +399,7 @@ class Drawer(Object):
         return np.random.choice(['', 'contains'])
 
     def stack(self, object_under=None):
-        return False # drawer cannot be stacked
+        return False, 'drawer cannot be stacked'
 
     def __str__(self):
         return f'{self.name},\t{self.type},\t{self.position_real.round(2)}, {self.opened_str}, cont: {[c.name for c in self.contains]},\t{self.print_structure(out_oneline_str=True)}'
@@ -427,47 +422,47 @@ class Drawer(Object):
         opened_before = self.opened
         self.opened = True
         if not opened_before:
-            return True
+            return True, ''
         else:
-            return False
+            return True, 'was opened before'
 
     def close(self):
         self.open_close_count += 1
         opened_before = self.opened
         self.opened = False
         if opened_before:
-            return True
+            return True, ''
         else:
-            return False
+            return False, 'was closed before'
 
     def put_in(self, object=None):
         if not object:
-            return False
+            return False, f'{self.type} no object specified'
         if object in self.contains:
-            return False
+            return False, f'{self.type} already contains {self.contains}'
         if not self.opened:
-            return False
+            return False, f'{self.type} not opened, cannot put it'
         self.contains.append(object)
         object.inside_drawer = True
-        return True
+        return True, ''
 
     def pick_up(self, object=None):
         if not object:
-            return False
+            return False, 'no object specified'
         if object not in self.contains:
-            return False
+            return False, f'{self.type} does not have object inside to pick'
         if not self.opened:
-            return False
+            return False, f'{self.type} not opened'
         self.contains.remove(object)
-        return True
+        return True, ''
 
     def fill(self):
         self.full = False
-        return True
+        return True, ''
 
     def empty(self):
         self.full = False
-        return True
+        return True, ''
 
 class Cup(Object):
     def __init__(self, name="?", position=None, full=False, random=True, *args, **kwargs):
@@ -475,7 +470,6 @@ class Cup(Object):
         self.full = full
         if random: self.full = bool(np.random.randint(2))
         self.type = 'cup'
-        self.direction = np.array([0, 0, 1]) # default
         self.size = 0.01 # [m] height
         if random: self.size = np.random.randint(3,8)/100
         self.inside_drawer = False
@@ -491,11 +485,11 @@ class Cup(Object):
     def random_capacity(self):
         return np.random.choice(['', 'stacked'])
 
-    def rotate(self, direction):
-        self.direction = np.array(direction)
-        if not (direction == np.array([0,0,1])).all():
-            self.full = False
-        return
+    def rotate(self, quaternion):
+        self.quaternion = np.array(quaternion)
+        # TODO: Check semantics e.g. drink spill
+
+        return True, ''
 
     def __str__(self):
         return f'{self.name},\t{self.type},\t{self.position_real.round(2)}, {self.full_str},\t{self.print_structure(out_oneline_str=True)}'
@@ -506,17 +500,15 @@ class Cup(Object):
 
     def fill(self):
         self.full = True
+        return True, ''
 
     def empty(self):
         full_before = self.full
         self.full = False
         if full_before:
-            return True
+            return True, ''
         else:
-            return False
-
-if __name__ == '__main__':
-    test_objects()
+            return True, 'was empty before'
 
 def test_objects():
     # Collisions test check
@@ -624,4 +616,5 @@ def test_objects():
     bb in arr_obj
     arr_obj.remove(bb)
 
-#
+if __name__ == '__main__':
+    test_objects()

@@ -10,6 +10,8 @@ from srcmodules.Actions import Actions
 from srcmodules.SceneFieldFeatures import SceneFieldFeatures
 from copy import deepcopy
 
+from geometry_msgs.msg import Point, Quaternion, Pose
+
 class Scene():
 
     def __init__(self, grid_lens = [4,4,4], objects=[], init='no_task', user=None, random=True, import_data=None, name="scene0"):
@@ -172,7 +174,14 @@ class Scene():
     @property
     def n(self):
         return len(self.O)
-
+    
+    @property
+    def empty_scene(self):
+        if len(self.O) > 0:
+            return False
+        else: 
+            return True
+    
     @property
     def info(self):
         print(self.__str__())
@@ -333,6 +342,10 @@ class Scene():
     @property
     def object_poses(self):
         return [[*obj.position, *obj.quaternion] for obj in self.objects]
+
+    @property
+    def object_poses_ros(self):
+        return [Pose(position=Point(x=obj.position[0], y=obj.position[1], z=obj.position[2]), orientation=Quaternion(x=obj.quaternion[0],y=obj.quaternion[1],z=obj.quaternion[2],w=obj.quaternion[3])) for obj in self.objects]
 
     @property
     def object_names(self):
