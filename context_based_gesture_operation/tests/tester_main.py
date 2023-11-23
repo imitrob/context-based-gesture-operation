@@ -3,7 +3,7 @@
 import sys; sys.path.append("..")
 
 from copy import deepcopy
-from context_based_gesture_operation.msg import Scene as SceneRos
+from teleop_msgs.msg import Scene as SceneRos
 from srcmodules.Scenes import Scene as Scene
 from srcmodules.Actions import Actions as Actions
 import numpy as np
@@ -41,7 +41,7 @@ def test_ros_converter():
 
 def test_actions():
     if True:
-        import sys; sys.path.append("/home/petr/ros2_ws/src/teleop_gesture_toolbox/teleop_gesture_toolbox")
+        import sys; sys.path.append("/home/petr/crow-base/src/teleop_gesture_toolbox/teleop_gesture_toolbox")
         from os_and_utils.visualizer_lib import ScenePlot
         import matplotlib
         import matplotlib.pyplot as plt

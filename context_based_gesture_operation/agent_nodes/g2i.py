@@ -6,10 +6,10 @@
 import rclpy
 from rclpy.node import Node
 
-from context_based_gesture_operation.srv import G2I
-from context_based_gesture_operation.msg import Intent
-from context_based_gesture_operation.msg import Scene as SceneRos
-from context_based_gesture_operation.msg import Gestures as GesturesRos
+from teleop_msgs.srv import G2I
+from teleop_msgs.msg import Intent
+from teleop_msgs.msg import Scene as SceneRos
+from teleop_msgs.msg import Gestures as GesturesRos
 import numpy as np
 try:
     import srcmodules
@@ -29,8 +29,8 @@ except:
     theano = None
 
 # TMP
-import sys, os; sys.path.append(f"/home/petr/ros2_ws/src/teleop_gesture_toolbox/teleop_gesture_toolbox")
-sys.path.append(f"/home/petr/ros2_ws/src/teleop_gesture_toolbox/teleop_gesture_toolbox/hand_processing")
+import sys, os; sys.path.append(f"/home/petr/crow-base/src/teleop_gesture_toolbox/teleop_gesture_toolbox")
+sys.path.append(f"/home/petr/crow-base/src/teleop_gesture_toolbox/teleop_gesture_toolbox/hand_processing")
 import gesture_classification.gestures_lib as gl; gl.init(silent=True)
 
 '''
@@ -238,7 +238,7 @@ class PyMC3_Sample():
 
         assert theano is not None
         assert load_model != ""
-        network_path = "/home/petr/ros2_ws/src/context_based_gesture_operation/context_based_gesture_operation/trained_networks/"
+        network_path = "/home/petr/crow-base/src/context_based_gesture_operation/context_based_gesture_operation/trained_networks/"
         self.nn = NNWrapper.load_network(network_path, name=load_model)
         self.init(self.nn)
 

@@ -8,7 +8,7 @@ import sys, os
 import numpy as np
 import std_msgs.msg as std_msgs
 
-from context_based_gesture_operation.msg import Scene as SceneRos
+from teleop_msgs.msg import Scene as SceneRos
 
 # if launching by script from this dir, add:
 # sys.path.append("..")
@@ -18,9 +18,9 @@ from srcmodules.RobotActions import RobotActions,act
 from agent_nodes import g2i
 
 from py_trees_ros import subscribers
-from context_based_gesture_operation.msg import Intent
-from context_based_gesture_operation.msg import Gestures as GesturesRos
-from context_based_gesture_operation.srv import G2I
+from teleop_msgs.msg import Intent
+from teleop_msgs.msg import Gestures as GesturesRos
+from teleop_msgs.srv import G2I
 
 from agent_nodes.g2i import G2IRosNode
 

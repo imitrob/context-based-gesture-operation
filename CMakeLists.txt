@@ -11,16 +11,16 @@ find_package(moveit_msgs REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Gestures.msg"
-  "msg/Intent.msg"
-  "msg/Scene.msg"
-  "msg/SceneObject.msg"
-  "msg/HRICommand.msg"
-  "srv/G2I.srv"
-  "srv/BTreeSingleCall.srv"
-  DEPENDENCIES geometry_msgs std_msgs sensor_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
-)
+#rosidl_generate_interfaces(${PROJECT_NAME}
+#  "msg/Gestures.msg"
+#  "msg/Intent.msg"
+#  "msg/Scene.msg"
+#  "msg/SceneObject.msg"
+#  "msg/HRICommand.msg"
+#  "srv/G2I.srv"
+#  "srv/BTreeSingleCall.srv"
+#  DEPENDENCIES geometry_msgs std_msgs sensor_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
+#)
 
 # Install Python package
 ament_python_install_package(context_based_gesture_operation)

@@ -1,8 +1,8 @@
 import rospy
-from context_based_gesture_operation.srv import G2I, G2IResponse
-from context_based_gesture_operation.msg import Intent
-from context_based_gesture_operation.msg import Gestures
-from context_based_gesture_operation.msg import Scene
+from teleop_msgs.srv import G2I, G2IResponse
+from teleop_msgs.msg import Intent
+from teleop_msgs.msg import Gestures
+from teleop_msgs.msg import Scene
 
 rospy.init_node("sadiansidona")
 

@@ -7,9 +7,9 @@ os.chdir(path)
 sys.path.append(path)
 import sys; sys.path.append("..")
 
-from context_based_gesture_operation.msg import Scene as SceneRos
-from context_based_gesture_operation.msg import Gestures as GesturesRos
-from context_based_gesture_operation.srv import BTreeSingleCall
+from teleop_msgs.msg import Scene as SceneRos
+from teleop_msgs.msg import Gestures as GesturesRos
+from teleop_msgs.srv import BTreeSingleCall
 
 from srcmodules.Scenes import Scene
 from srcmodules.Gestures import Gestures
