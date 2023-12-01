@@ -34,7 +34,7 @@ mamba create -n cbgo_env python=3.8
 conda activate cbgo_env
 mamba env update -n cbgo_env --file environment.yml
 
-# Reactivate conda env before proceeding. 
+# Reactivate conda env before proceeding.
 conda deactivate
 conda activate cbgo_env  
 
