@@ -70,6 +70,10 @@ class Object():
         self.inertia_transformation = inertia_transformation
 
     @property
+    def absolute_location(self):
+        return self.position_real
+
+    @property
     def direction(self):
         raise Exception("TODO")
 

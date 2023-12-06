@@ -3,13 +3,21 @@
 '''
 import sys
 import numpy as np
-import srcmodules.Objects as Objects
-import srcmodules.Robots as Robots
-from srcmodules.Users import Users
-from srcmodules.Actions import Actions
-from srcmodules.SceneFieldFeatures import SceneFieldFeatures
-from copy import deepcopy
 
+try:
+    import srcmodules.Objects as Objects
+    import srcmodules.Robots as Robots
+    from srcmodules.Users import Users
+    from srcmodules.Actions import Actions
+    from srcmodules.SceneFieldFeatures import SceneFieldFeatures
+except ModuleNotFoundError:
+    import context_based_gesture_operation.srcmodules.Objects as Objects
+    import context_based_gesture_operation.srcmodules.Robots as Robots
+    from context_based_gesture_operation.srcmodules.Users import Users
+    from context_based_gesture_operation.srcmodules.Actions import Actions
+    from context_based_gesture_operation.srcmodules.SceneFieldFeatures import SceneFieldFeatures    
+
+from copy import deepcopy
 from geometry_msgs.msg import Point, Quaternion, Pose
 
 class Scene():
