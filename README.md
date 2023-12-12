@@ -68,7 +68,8 @@ cd PyRep
 pip install .
 ```
 
-
+- Use sample NN example:
+  - Download [model (12MB)](https://drive.google.com/file/d/1miZZH9db0C7EG06j72JrZJe7Gkd6qAVV/view?usp=sharing) and move the file to `context_based_gesture_operation/trained_networks` folder or use the `download_sample.py` script which should do the download by automatically
 
 ## Notebooks available
 ```
