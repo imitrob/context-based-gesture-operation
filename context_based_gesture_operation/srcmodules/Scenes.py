@@ -3,6 +3,7 @@
 '''
 import sys
 import numpy as np
+from random import choice
 
 try:
     import srcmodules.Objects as Objects
@@ -304,11 +305,13 @@ class Scene():
         raise Exception("Full scene?")
 
     def get_random_position_in_scene(self, constraint='on_ground,x-cond,free', type='object'):
-        xlen, ylen, zlen = self.grid_lens
 
+        xlen, ylen, zlen = self.grid_lens
+        
         if type=='object' or type=='cup': x_position = np.random.choice(range(xlen-2))+1
         elif type=='drawer': x_position = 3
         else: raise Exception(f"Not the right object type: {type}")
+
 
         if not constraint:
             p = np.hstack([np.random.choice(range(xlen)), np.random.choice(range(ylen)), np.random.choice(range(zlen))])
@@ -326,6 +329,52 @@ class Scene():
                 i+=1
                 if i > 1000: raise Exception("Didn't found free space, scene too small!")
         return p
+    
+    def get_random_position_in_scene2(self, constraint='on_ground,free', type='object'):
+        '''
+        Panda table GRID, reachable:
+         Y=0 Y=1 Y=2 Y=3
+        |---------------|
+        |       P       | X=0
+        |--- --- --- ---| 
+        |-x- -x- -x- -x-| X=1
+        |-x- -x- -x- -x-| X=2
+        |--- -x- -x- ---| X=3
+        |--- --- --- ---| X=4
+        |               |
+        |---------------|
+        '''
+        grid = np.array([
+            [0, 0, 0, 0],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+        ])
+        xlen, ylen, zlen = self.grid_lens
+        assert xlen == 4, "TODO"
+        assert ylen == 4, "TODO"
+        assert zlen == 4, "TODO"
+
+        if 'on_ground' in constraint:
+            z = 0
+        else:
+            z = np.random.choice(range(zlen))
+
+        if 'free' in constraint:
+            x,y = None,None
+            for x_,y_ in np.argwhere(grid):
+                p = [x_,y_,z]
+                if self.collision_free_position(p):
+                    x,y = x_,y_
+                    break
+            if x is None:
+                print("Didn't found free space, choosing [x=1,y=2,z=1]_GRID values")
+                x, y, z = 1, 2, 1 # choose space above ground
+        else:
+            x,y = choice(np.argwhere(grid))
+
+        return np.array([x,y,z])
 
     @property
     def O(self):
