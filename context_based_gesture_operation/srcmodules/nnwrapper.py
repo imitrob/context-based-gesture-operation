@@ -69,7 +69,7 @@ class NNWrapper():
             wrapper (NetworkWrapper())
         '''
         wrapper = NNWrapper()
-        with open(network_path+name, 'rb') as input:
+        with open(network_path+"/"+name, 'rb') as input:
             wrapper = pickle.load(input, encoding="latin1")
 
         return wrapper

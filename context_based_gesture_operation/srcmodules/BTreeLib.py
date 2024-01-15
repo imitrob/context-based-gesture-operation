@@ -94,6 +94,8 @@ class GenerateIntent(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="target_action", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="target_object", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="auxiliary_parameters", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="action_probs", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="action_names", access=py_trees.common.Access.WRITE)
 
 
     def update(self):
@@ -113,7 +115,8 @@ class GenerateIntent(py_trees.behaviour.Behaviour):
         self.blackboard.target_action = intent.target_action
         self.blackboard.target_object = intent.target_object
         self.blackboard.auxiliary_parameters = intent.auxiliary_parameters
-
+        self.blackboard.action_probs = intent.action_probs
+        self.blackboard.action_names = intent.action_names
 
         #self.blackboard.target_action = target_action
         #self.blackboard.target_object = target_object
@@ -132,7 +135,7 @@ class ExecuteTA(py_trees.behaviour.Behaviour):
         self.logger.debug("%s.update()" % self.__class__.__name__)
         if self.blackboard.target_action != "":
             self.feedback_message = f"[1 Execute TA] {py_trees.common.Status.SUCCESS}! {self.blackboard.target_action},{self.blackboard.target_object}"
-            self.blackboard.robotic_sequence.append(Intent(target_action=self.blackboard.target_action, target_object=self.blackboard.target_object, auxiliary_parameters=""))
+            self.blackboard.robotic_sequence.append(Intent(target_action=self.blackboard.target_action, target_object=self.blackboard.target_object, auxiliary_parameters="", action_probs=self.blackboard.action_probs, action_names=self.blackboard.action_names))
         else:
             self.feedback_message = f"no action"
         return py_trees.common.Status.SUCCESS
@@ -149,6 +152,8 @@ class DeleteIntent(py_trees.behaviour.Behaviour):
         self.blackboard.target_action = ""
         self.blackboard.target_object = ""
         self.blackboard.auxiliary_parameters = ""
+        self.blackboard.action_probs = []
+        self.blackboard.action_names = []
         return py_trees.common.Status.SUCCESS
 
 # might be replaced with py_trees.blackboard.CheckBlackboardVariable(name="nnn",

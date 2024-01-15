@@ -5,12 +5,14 @@
 '''
 import rclpy
 from rclpy.node import Node
+from copy import deepcopy
 
 from teleop_msgs.srv import G2I
 from teleop_msgs.msg import Intent
 from teleop_msgs.msg import Scene as SceneRos
 from teleop_msgs.msg import Gestures as GesturesRos
 import numpy as np
+from pathlib import Path
 try:
     import srcmodules
 except ModuleNotFoundError:
@@ -20,6 +22,7 @@ from srcmodules.Gestures import Gestures
 from srcmodules.Actions import Actions
 from srcmodules.SceneFieldFeatures import SceneFieldFeatures
 from srcmodules.Objects import Object
+from srcmodules.utils import add_teleop_gesture_toolbox_path
 
 from srcmodules.nnwrapper import NNWrapper
 
@@ -28,18 +31,16 @@ try:
 except:
     theano = None
 
-# TMP
-import sys, os; sys.path.append(f"/home/petr/crow-base/src/teleop_gesture_toolbox/teleop_gesture_toolbox")
-sys.path.append(f"/home/petr/crow-base/src/teleop_gesture_toolbox/teleop_gesture_toolbox/hand_processing")
-import gesture_classification.gestures_lib as gl; gl.init(silent=True)
-
+add_teleop_gesture_toolbox_path()
+import gesture_classification.gestures_lib as gl
+gl.init(silent=True)
 '''
 >>> sceneros = SceneRos()
 >>> sceneros.user = 'Jan'
 >>> s = Scene(init='from_ros', import_data=sceneros)
 '''
 
-class G2IRosNode(Node):
+class G2IRosNode(Node): 
     def __init__(self, init_node=False, inference_type='NN', load_model='M3v10_D6.pkl', ignore_unfeasible=False):
         super().__init__("G2IServiceNode")
         self.create_service(G2I, '/g2i', self.G2I_service_callback)
@@ -63,16 +64,23 @@ class G2IRosNode(Node):
         self.scene_def_id = int(load_model.split("_")[0][3:])
 
     def gl_to_g2i(self, g):
-        '''
+        ''' Rearange to order as learned network
+            Config of gestures in gestures lib (teleop_gesture_toolbox) 
+                   to gestures in self.G, e.g. learned NN
+                   (Mappping Gset1 to Gset2)
+            - It loads the gestures from gl gesture lib.
+        Args:
+            g (Float[]): Probabilities data
         Tester:
-        import numpy as np
-        Gset1 = ['grab', 'pinch', 'point', 'two', 'three', 'four', 'five', 'thumbsup', 'swipe_down', 'swipe_front_right', 'swipe_left', 'swipe_up', 'no_gesture']
-        Gset2 = ['swipe_up', 'swipe_left', 'swipe_down', 'swipe_right', 'five', 'grab', 'thumbsup', 'rotate', 'point']
-        g = np.zeros(13)
-        g[-3] = 1.0
+        >>> import numpy as np
+        >>> Gset1 = ['grab', 'pinch', 'point', 'two', 'three', 'four', 'five', 'thumbsup', 'swipe_down', 'swipe_front_right', 'swipe_left', 'swipe_up', 'no_gesture']
+        >>> Gset2 = ['swipe_up', 'swipe_left', 'swipe_down', 'swipe_right', 'five', 'grab', 'thumbsup', 'rotate', 'point']
+        >>> g = np.zeros(13)
+        >>> g[0] = 1.0
+        >>> g[-4] = 0.8
         '''
-        Gset1 = gl.gd.Gs
-        Gset2 = self.G
+        Gset1 = gl.gd.Gs # Is read from gl (teleop_gesture_toolbox config)
+        Gset2 = self.G # Is read from saved NN data
 
         g_g2i = np.zeros(np.array(len(Gset2)))
         for n, g_ in enumerate(Gset2):
@@ -82,7 +90,7 @@ class G2IRosNode(Node):
             if g_ in Gset1:
                 g_g2i[n] = g[Gset1.index(g_)]
 
-        g_g2i
+        # Check that the input for the network are not only zeroes, something is mapped
         if np.allclose(g_g2i, np.zeros(np.array(len(Gset2))) ): return None
 
         return g_g2i
@@ -91,6 +99,7 @@ class G2IRosNode(Node):
         ''' G2I for ROS2 service
         Parameters:
             request.scene (SceneRos)
+            request.scene.focus_point (): To retrieve target object
             request.gestures.probabilities.data (Float[]) Gesture probabilities
         Returns:
             response.intent.target_action (string)
@@ -101,7 +110,7 @@ class G2IRosNode(Node):
         focus_point = request.scene.focus_point
         g_gl = request.gestures.probabilities.data
 
-        g = self.gl_to_g2i(g_gl)
+        g = self.gl_to_g2i(g_gl) # mapping to teleop_gesture_toolbox gesture set to self.G gesture set
         if g is None:
             print("[ERROR] No gesture in G2I model")
             return response
@@ -118,7 +127,7 @@ class G2IRosNode(Node):
 
         name_g = self.G[id_g]
 
-        a, o = self.predict_with_scene_gesture_and_target_object(s, name_g, name_obj, scene_def_id=self.scene_def_id)
+        a, o, probs = self.predict_with_scene_gesture_and_target_object(s, name_g, name_obj, scene_def_id=self.scene_def_id)
 
         #SceneFieldFeatures.eeff__feature(s.object_positions, np.array([0,0,0]))
         #nojb = np.argmax(SceneFieldFeatures.eeff__feature(s.object_positions_real,np.array(focus_point)))
@@ -126,7 +135,10 @@ class G2IRosNode(Node):
         response.intent.target_action = a
         if s.object_positions_real != []:
             response.intent.target_object = s.O[id_obj]
-        print(f"intent {response.intent.target_action}, {response.intent.target_object}")
+        print(f"intent {response.intent.target_action}, {response.intent.target_object}, PPP probs {probs}")
+        response.intent.action_probs = list(np.array(probs, dtype=float))
+        response.intent.action_names = self.A
+        
 
         return response
 
@@ -135,9 +147,10 @@ class G2IRosNode(Node):
         Parameters:
             scene - Scene() object - srcmodules.Scenes.Scene
             gesture - String - Gesture name performed
-            target_object - String - object name in the scene\
+            target_object - String - object name in the scene
         Returns:
-            (target_action, target_object) - (String, String) - Note: target_object is same as on input
+            (target_action, target_object, inference_probs) - (String, String, Float[]) 
+            - Note: target_object is same as on input
         '''
         if target_object is not None:
             focus_point = getattr(s, target_object).position_real
@@ -182,20 +195,21 @@ class G2IRosNode(Node):
         possible_actions_for_target_object = [(a) for a in possible_actions if a[1]==target_object]
 
         if self.ignore_unfeasible:
-            return (self.A[action_id], target_object)
+            return self.A[action_id], target_object, inference_probs
 
         ## Check if possible to do
         print(f"Action probs: {inference_probs}")
         print("possible_actions_for_target_object", possible_actions_for_target_object)
         if [(a) for a in possible_actions_for_target_object if a[0]==self.A[action_id]] == []:
             print("Action is not feasible to do! Try to return second most probable action!")
+            inference_probs_original = deepcopy(inference_probs)
             inference_probs[action_id] = 0
             action_id_2 = np.argmax(inference_probs)
             if [(a) for a in possible_actions_for_target_object if a[0]==self.A[action_id_2]] == []:
-                return ("", "")
+                return "", "", inference_probs_original
             else:
-                return (self.A[action_id_2], target_object)
-        return (self.A[action_id], target_object)
+                return self.A[action_id_2], target_object, inference_probs
+        return self.A[action_id], target_object, inference_probs
 
 
 
@@ -238,7 +252,8 @@ class PyMC3_Sample():
 
         assert theano is not None
         assert load_model != ""
-        network_path = "/home/petr/crow-base/src/context_based_gesture_operation/context_based_gesture_operation/trained_networks/"
+        network_path = str(Path(__file__).parent.parent.joinpath("trained_networks"))
+        # e.g.: network_path = "/home/<user>/<ws>/src/context_based_gesture_operation/context_based_gesture_operation/trained_networks/"
         self.nn = NNWrapper.load_network(network_path, name=load_model)
         self.init(self.nn)
 
@@ -407,6 +422,6 @@ class MultiDim_Sample():
 if __name__ == "__main__":
     Object.all_types = Otypes = ['cup', 'drawer', 'object']
     rclpy.init()
-    g2i = G2IRosNode(init_node=False, inference_type='NN', load_model='M3v8_D4_1.pkl', ignore_unfeasible=True)
+    g2i = G2IRosNode(init_node=False, inference_type='NN', load_model='M3v10_D6.pkl', ignore_unfeasible=True)
 
     rclpy.spin(g2i)
