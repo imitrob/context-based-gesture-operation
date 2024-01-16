@@ -365,6 +365,11 @@ class Object():
         return np.array([x_,y_,z_])
 
 
+class CrowObject2(Object):
+    def __init__(self, type, random=True, *args, **kwargs):
+        super().__init__(random=random, *args, **kwargs)
+        self.type = type
+
 class Drawer(Object):
     def __init__(self, opened=False, random=True, *args, **kwargs):
         super().__init__(random=random, *args, **kwargs)

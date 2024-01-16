@@ -17,14 +17,27 @@ try:
     import srcmodules
 except ModuleNotFoundError:
     import sys; sys.path.append("..")
-from srcmodules.Scenes import Scene
-from srcmodules.Gestures import Gestures
-from srcmodules.Actions import Actions
-from srcmodules.SceneFieldFeatures import SceneFieldFeatures
-from srcmodules.Objects import Object
-from srcmodules.utils import add_teleop_gesture_toolbox_path
+    
+try:
+    from srcmodules.Scenes import Scene
+    from srcmodules.Gestures import Gestures
+    from srcmodules.Actions import Actions
+    from srcmodules.SceneFieldFeatures import SceneFieldFeatures
+    from srcmodules.Objects import Object
+    from srcmodules.utils import add_teleop_gesture_toolbox_path
 
-from srcmodules.nnwrapper import NNWrapper
+    from srcmodules.nnwrapper import NNWrapper
+except ModuleNotFoundError:
+    from context_based_gesture_operation.srcmodules.Scenes import Scene
+    from context_based_gesture_operation.srcmodules.Gestures import Gestures
+    from context_based_gesture_operation.srcmodules.Actions import Actions
+    from context_based_gesture_operation.srcmodules.SceneFieldFeatures import SceneFieldFeatures
+    from context_based_gesture_operation.srcmodules.Objects import Object
+    from context_based_gesture_operation.srcmodules.utils import add_teleop_gesture_toolbox_path
+
+    from context_based_gesture_operation.srcmodules.nnwrapper import NNWrapper
+    
+
 
 try:
     import theano

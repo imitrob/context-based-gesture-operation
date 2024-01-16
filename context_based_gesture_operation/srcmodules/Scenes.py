@@ -459,7 +459,9 @@ class Scene():
         if rosobj is None: raise Exception("to_ros() function needs Scene ROS object to be filled!")
         for n in range(7):
             rosobj.objects[n].position_real = np.array([0,0,0], dtype=float)
-        for n,o in enumerate(self.objects):
+        
+        
+        for n,o in enumerate(deepcopy(self.objects)):
             rosobj.objects[n].name = o.name
 
             rosobj.objects[n].position_real = np.array(o.position_real, dtype=float)

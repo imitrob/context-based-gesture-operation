@@ -18,7 +18,9 @@ def get_parent_folder(path):
         # parent = path_here.parents[0]
         if parent.stem == 'src':
             return parent
-    raise Exception("Not found src folder")
+        elif parent.stem == 'install':
+            return parent.parent.joinpath("src")
+    raise Exception(f"Not found src folder, this was __file__: {path}")
 
 def add_teleop_gesture_toolbox_path():
     
