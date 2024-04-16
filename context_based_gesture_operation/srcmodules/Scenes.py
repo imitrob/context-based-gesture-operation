@@ -779,6 +779,15 @@ class Scene():
         else:
             return True
 
+    # CROW_ADDONS
+    def crow_get_object_by_name(self, name):
+        ''' object names as: 'cube_od_1'
+            don't consider duplicates, just chooses the first
+        '''
+        for o in self.object_names:
+            if o.split("_od_")[0] == name:
+                return self.get_object_by_name(o)
+
 class SceneCoppeliaInterface():
     '''
     DEPRECATED

@@ -1,4 +1,4 @@
-# Context-based gesture control v0.1
+# Context-based gesture control v0.3
 
 ## Dependencies
 
